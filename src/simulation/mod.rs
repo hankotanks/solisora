@@ -1,5 +1,5 @@
 mod point;
-mod body;
+pub(crate) mod body;
 
 use rand::Rng;
 
@@ -12,7 +12,7 @@ impl Default for Simulation {
         let mut simulation = Self { 
             bodies: vec![body::Body::default()] 
         };
-
+        
         loop {
             let planet_index = simulation.add();
             let planet_radius = simulation.bodies[planet_index].get_orbital_radius(&simulation);

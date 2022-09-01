@@ -163,73 +163,18 @@ impl State {
     }
 
     pub(super) fn update(&mut self, simulation: &mut crate::simulation::Simulation) {
-        //dbg!(simulation.objects().collect::<Vec<&crate::simulation::Object>>().len());
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut indices: Vec<u16> = Vec::new();
         for object in simulation.bodies() {
-            let center_index = vertices.len();
-
-            // 1st add the center point
-            vertices.push(
-                Vertex {
-                    position: [
-                        object.pos().x(),
-                        object.pos().y(),
-                        0f32
-                    ],
-                    color: [ 1f32, 1f32, 1f32 ]
-                }
-            );
-
-            // AND the 1st point on the circumference of the circle
-            vertices.push(
-                Vertex {
-                    position: [
-                        object.radius() + object.pos().x(),
-                        object.pos().y(),
-                        0f32
-                    ],
-                    color: [ 1f32, 1f32, 1f32 ]
-                }
-            );
-
-            // Add in each slice, one by one
-            for i in (19625..628000).step_by(19625) {
-                let i = i as f32 * 0.00001f32;
-
-                vertices.push(
-                    Vertex {
-                        position: [
-                            i.cos() * object.radius() + object.pos().x(),
-                            i.sin() * object.radius() + object.pos().y(),
-                            0f32
-                        ],
-                        color: [ 1f32, 1f32, 1f32 ]
-                    }
-                );
-
-                //dbg!(vertices.len());
-
-                indices.append(
-                    &mut vec![
-                        vertices.len() as u16 - 2, 
-                        vertices.len() as u16 - 1, 
-                        center_index as u16
-                    ]
-                )
-            }
-
-            // Finally, connect the final edge point to the 1st
-            // This avoids duplicating the point that was added before the loop
-            indices.append(
-                &mut vec![
-                    vertices.len() as u16 - 1, 
-                    center_index as u16 + 1, 
-                    center_index as u16
-                ]
-            );
+            Self::generate_body_triangles(object, &mut vertices, &mut indices);
         }
 
+        self.update_buffers(vertices, indices)
+
+        
+    }
+
+    fn update_buffers(&mut self, vertices: Vec<Vertex>, indices: Vec<u16>) {
         self.vertex_buffer = self.device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: None,
@@ -302,5 +247,60 @@ impl State {
         output.present();
     
         Ok(())
+    }
+}
+
+impl State {
+    fn generate_body_triangles(body: &crate::simulation::body::Body, vertices: &mut Vec<Vertex>, indices: &mut Vec<u16>) {
+        let offset = vertices.len() as u16;
+        let radius = body.radius();
+        let x = body.pos().x();
+        let y = body.pos().y();
+
+        // 1st add the center point
+        vertices.push(
+            Vertex {
+                position: [
+                    x,
+                    y,
+                    0f32
+                ],
+                color: [ 1f32, 1f32, 1f32 ]
+            }
+        );
+
+        // AND the 1st point on the circumference of the circle
+        vertices.push(
+            Vertex {
+                position: [
+                    radius + x,
+                    y,
+                    0f32
+                ],
+                color: [ 1f32, 1f32, 1f32 ]
+            }
+        );
+
+        // Add in each slice, one by one
+        for i in (19625..628000).step_by(19625) {
+            let i = i as f32 * 0.00001f32;
+
+            vertices.push(
+                Vertex {
+                    position: [
+                        i.cos() * radius + x,
+                        i.sin() * radius + y,
+                        0f32
+                    ],
+                    color: [ 1f32, 1f32, 1f32 ]
+                }
+            );
+        }
+
+        let i: Vec<u16> = vec![
+            1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 7, 0, 7, 8, 0, 8, 9, 0, 9, 10, 0, 10, 11, 0, 11, 12, 0, 12, 13, 0, 13, 14, 0, 14, 15, 0, 15, 16, 0, 16, 17, 0, 17, 18, 0, 18, 19, 0, 19, 20, 0, 20, 21, 0, 21, 22, 0, 22, 23, 0, 23, 24, 0, 24, 25, 0, 25, 26, 0, 26, 27, 0, 27, 28, 0, 28, 29, 0, 29, 30, 0, 30, 31, 0, 31, 32, 0, 32, 1, 0
+        ];
+
+        indices.append(&mut i.iter().map(|j| j + offset).collect::<Vec<u16>>());
     }
 }

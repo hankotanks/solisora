@@ -45,7 +45,7 @@ impl Default for Body {
 }
 
 impl Body {
-    const SUN_RADIUS: f32 = 0.05;
+    const SUN_RADIUS: f32 = 0.075;
 
     pub(crate) fn new(radius: f32) -> Self {
         Self {
@@ -54,17 +54,6 @@ impl Body {
             orbit: None,
             moon_indices: Vec::new()
         }
-    }
-
-    pub(crate) fn update_pos(&mut self, parent_pos: point::Point, parent_radius: f32) {
-        if let Some(mut orbit) = self.orbit {
-            let multiplier = Self::SUN_RADIUS / parent_radius;
-
-            self.pos = parent_pos;
-            self.pos = orbit.update(self.pos, multiplier);
-            
-            self.orbit = Some(orbit);
-        } 
     }
 
     pub(crate) fn add_moon(&mut self, index: usize) {
@@ -88,5 +77,16 @@ impl Body {
         }
 
         r
+    }
+
+    pub(crate) fn update_pos(&mut self, parent_pos: point::Point, parent_radius: f32) {
+        if let Some(mut orbit) = self.orbit {
+            let multiplier = Self::SUN_RADIUS / parent_radius;
+
+            self.pos = parent_pos;
+            self.pos = orbit.update(self.pos, multiplier);
+            
+            self.orbit = Some(orbit);
+        } 
     }
 }
