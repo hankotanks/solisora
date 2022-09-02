@@ -46,7 +46,7 @@ impl Default for Body {
 }
 
 impl Body {
-    const SUN_RADIUS: f32 = 0.075;
+    const SUN_RADIUS: f32 = 0.02;
 
     pub(crate) fn new(radius: f32) -> Self {
         Self {
