@@ -17,7 +17,7 @@ pub(super) struct State {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     index_count: u32,
-    camera: Camera,
+    pub(super) camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -85,12 +85,8 @@ impl State {
 
         let index_count = 0u32;
 
-        let camera = Camera {
-            eye: (0.0, 0.0).into(),
-            aspect: config.width as f32 / config.height as f32
-        };
+        let camera = Camera::new(config.width as f32 / config.height as f32);
 
-        
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_projection(&camera);
 
@@ -115,7 +111,7 @@ impl State {
                     count: None,
                 }
             ],
-            label: Some("camera_bind_group_layout"),
+            label: None
         });
         
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -126,11 +122,8 @@ impl State {
                     resource: camera_buffer.as_entire_binding(),
                 }
             ],
-            label: Some("camera_bind_group"),
+            label: None
         });
-        
-        
-         
 
         let shader = device.create_shader_module(
             wgpu::include_wgsl!("shader.wgsl")
@@ -226,6 +219,11 @@ impl State {
         self.index_buffer = mesh.build_index_buffer(&self.device);
 
         self.index_count = mesh.count();
+
+        self.camera_uniform.update_projection(&self.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform])
+        );
     }
 
     pub(super) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

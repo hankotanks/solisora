@@ -1,9 +1,10 @@
-use cgmath::{Point2, Point3, SquareMatrix};
+use cgmath::{Point2, Point3, SquareMatrix, Vector2};
 use cgmath::Matrix4;
 
 pub(super) struct Camera {
-    pub(super) eye: Point2<f32>,
-    pub(super) aspect: f32
+    pub(super) pos: Point2<f32>,
+    zoom: f32,
+    aspect: f32
 }
 
 impl Camera {
@@ -18,13 +19,36 @@ impl Camera {
         0.0, 0.0, 0.5, 1.0,
     );
 
+    pub(super) fn new(aspect: f32) -> Self {
+        Self {
+            pos: Point2::new(0.0f32, 0.0f32),
+            zoom: 1f32,
+            aspect
+        }
+    }
+
+    pub(super) fn pan(&mut self, pos: Point2<f32>) {
+        self.pos = pos;
+    }
+
+    pub(super) fn zoom(&mut self, delta: f32) {
+        self.zoom = (self.zoom + delta).clamp(0.2f32, 5f32);
+    }
+
     fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let eye = Point3::new(self.eye.x, self.eye.y, 1.0);
-        let target = Point3::new(self.eye.x, self.eye.y, 0.0);
+        let pos = Point3::new(self.pos.x, self.pos.y, self.zoom);
+        let target = Point3::new(self.pos.x, self.pos.y, 0.0);
 
-        let view = Matrix4::look_at_rh(eye, target, cgmath::Vector3::unit_y());
+        let view = Matrix4::look_at_rh(pos, target, cgmath::Vector3::unit_y());
 
-        Self::MATRIX_CORRECTION_FOR_WGPU * view
+        let projection = cgmath::perspective(
+            cgmath::Deg(Self::FOVY),
+            self.aspect,
+            Self::ZNEAR,
+            Self::ZFAR
+        );
+
+        Self::MATRIX_CORRECTION_FOR_WGPU * projection * view
     }
 }
 
