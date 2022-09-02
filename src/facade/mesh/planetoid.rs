@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::prelude::Point;
 
 use super::Vertex;
@@ -6,6 +8,7 @@ use super::Meshable;
 pub(super) struct Planetoid {
   pos: Point,
   radius: f32,
+  color: [f32; 3],
   vertices: Vec<Vertex>
 }
 
@@ -47,13 +50,59 @@ impl Planetoid {
 }
 
 impl Meshable for Planetoid {
-  fn vertices(&self) -> Vec<Vertex> {
-      self.vertices.clone()
-  }
+    fn vertices(&self) -> Vec<Vertex> {
+        self.vertices.clone()
+    }
 
-  fn indices(&self) -> Vec<u16> {
-      Self::INDICES.to_vec()
-  }
+    fn indices(&self) -> Vec<u16> {
+        Self::INDICES.to_vec()
+    }
+
+    fn recalculate_vertices(&mut self, pos: Point) {
+        self.pos = pos;
+        
+        self.vertices.clear();
+
+        // 1st add the center point
+        self.vertices.push(
+            Vertex {
+                position: [
+                    self.pos.x(),
+                    self.pos.y(),
+                    0f32
+                ],
+                color: self.color
+            }
+        );
+
+        // AND the 1st point on the circumference of the circle
+        self.vertices.push(
+            Vertex {
+                position: [
+                    self.radius + self.pos.x(),
+                    self.pos.y(),
+                    0f32 
+                ],
+                color: self.color
+            }
+        );
+
+        // Add in each slice, one by one
+        for i in (19625..628000).step_by(19625) {
+            let i = i as f32 * 0.00001f32;
+
+            self.vertices.push(
+                Vertex {
+                    position: [
+                        i.cos() * self.radius + self.pos.x(),
+                        i.sin() * self.radius + self.pos.y(),
+                        0f32
+                    ],
+                    color: self.color
+                }
+            );
+        }
+    }
 }
 
 impl Planetoid {
@@ -61,48 +110,15 @@ impl Planetoid {
       let mut planetoid = Self {
           pos,
           radius,
+          color: [
+              rand::thread_rng().gen::<f32>(),
+              rand::thread_rng().gen::<f32>(),
+              rand::thread_rng().gen::<f32>(),
+          ],
           vertices: Vec::new()
       };
 
-      // 1st add the center point
-      planetoid.vertices.push(
-          Vertex {
-              position: [
-                  planetoid.pos.x(),
-                  planetoid.pos.y(),
-                  0f32
-              ],
-              color: [ 1f32, 1f32, 1f32 ]
-          }
-      );
-
-      // AND the 1st point on the circumference of the circle
-      planetoid.vertices.push(
-          Vertex {
-              position: [
-                  planetoid.radius + planetoid.pos.x(),
-                  planetoid.pos.y(),
-                  0f32
-              ],
-              color: [ 1f32, 1f32, 1f32 ]
-          }
-      );
-
-      // Add in each slice, one by one
-      for i in (19625..628000).step_by(19625) {
-          let i = i as f32 * 0.00001f32;
-
-          planetoid.vertices.push(
-              Vertex {
-                  position: [
-                      i.cos() * radius + planetoid.pos.x(),
-                      i.sin() * radius + planetoid.pos.y(),
-                      0f32
-                  ],
-                  color: [ 1f32, 1f32, 1f32 ]
-              }
-          );
-      }
+      planetoid.recalculate_vertices(pos);
 
       planetoid
   }

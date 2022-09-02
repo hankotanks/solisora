@@ -13,12 +13,14 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let mut mesh = mesh::Mesh::new();
+    // Initialize mesh
+    let mut mesh = mesh::Mesh::new(&simulation);
     
     let mut state = state::State::new(&window).await;
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
+                // Advance simulation, update mesh to reflect new position, and render changes
                 simulation.update();
                 mesh.update_from_simulation(&simulation);
                 state.update(&mesh);

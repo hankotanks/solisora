@@ -26,6 +26,9 @@ impl Default for Simulation {
             simulation.bodies[planet_index].add_orbit(0, system_radius + planet_radius);
         }
 
+        // Update once to put bodies in position
+        simulation.update();
+
         simulation
     }
 }

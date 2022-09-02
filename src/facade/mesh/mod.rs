@@ -2,6 +2,8 @@ mod planetoid;
 
 use wgpu::util::DeviceExt;
 
+use crate::prelude::Point;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct Vertex {
@@ -26,6 +28,7 @@ impl Vertex {
 trait Meshable {
     fn vertices(&self) -> Vec<Vertex>;
     fn indices(&self) -> Vec<u16>;
+    fn recalculate_vertices(&mut self, pos: Point);
 }
 
 pub(super) struct Mesh {
@@ -33,10 +36,20 @@ pub(super) struct Mesh {
 }
 
 impl Mesh {
-    pub(super) fn new() -> Self {
-        Self {
+    pub(super) fn new(simulation: &crate::simulation::Simulation) -> Self {
+        let mut mesh = Self {
             objects: Vec::new()
+        };
+
+        for object in simulation.bodies() {
+            mesh.objects.push(
+                Box::new(
+                    planetoid::Planetoid::new(object.pos(), object.radius())
+                )
+            );
         }
+
+        mesh
     }
 
     pub(super) fn build_vertex_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
@@ -86,14 +99,8 @@ impl Mesh {
     }
 
     pub(super) fn update_from_simulation(&mut self, simulation: &crate::simulation::Simulation) {
-        self.objects.clear();
-
-        for object in simulation.bodies() {
-            self.objects.push(
-                Box::new(
-                    planetoid::Planetoid::new(object.pos(), object.radius())
-                )
-            );
+        for (index, object) in simulation.bodies().enumerate() {
+            self.objects[index].recalculate_vertices(object.pos());
         }
     }
 }
