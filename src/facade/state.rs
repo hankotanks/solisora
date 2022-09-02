@@ -4,12 +4,13 @@ use winit::window;
 use winit::event::WindowEvent;
 
 use super::camera::Camera;
+use super::camera::CameraController;
 use super::camera::CameraUniform;
 use super::mesh;
 use super::mesh::Vertex;
 
 pub(super) struct State {
-    pub(super) size: winit::dpi::PhysicalSize<u32>,
+    size: winit::dpi::PhysicalSize<u32>,
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -17,7 +18,8 @@ pub(super) struct State {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     index_count: u32,
-    pub(super) camera: Camera,
+    camera: Camera,
+    camera_controller: CameraController,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -86,6 +88,8 @@ impl State {
         let index_count = 0u32;
 
         let camera = Camera::new(config.width as f32 / config.height as f32);
+
+        let camera_controller = CameraController::new(&size);
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_projection(&camera);
@@ -194,6 +198,7 @@ impl State {
             index_buffer,
             index_count,
             camera,
+            camera_controller,
             camera_uniform,
             camera_buffer,
             camera_bind_group,
@@ -207,10 +212,26 @@ impl State {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+
+            self.camera_controller.handle_resize(&self.size);
         }
     }
 
-    pub(super) fn input(&mut self, _event: &WindowEvent) -> bool {
+    pub(super) fn redraw(&mut self) {
+        self.resize(self.size);
+    }
+
+    pub(super) fn input(&mut self, event: &WindowEvent) -> bool {
+        // All mouse events are related to camera control
+        match event {
+            WindowEvent::MouseWheel { .. } | 
+            WindowEvent::MouseInput { .. } | 
+            WindowEvent::CursorMoved { .. } => { 
+                self.camera_controller.handle_mouse_events(&mut self.camera, event) 
+            },
+            _ => {}
+        }
+
         false
     }
 

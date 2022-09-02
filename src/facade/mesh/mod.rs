@@ -96,7 +96,7 @@ impl Mesh {
         c
     }
 
-    pub(super) fn update_from_simulation(&mut self, simulation: &crate::simulation::Simulation) {
+    pub(super) fn handle_simulation_update(&mut self, simulation: &crate::simulation::Simulation) {
         for (index, object) in simulation.bodies().enumerate() {
             self.objects[index].recalculate_vertices(object.pos());
         }

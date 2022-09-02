@@ -49,7 +49,7 @@ impl Simulation {
             let moon_radius = (planet_radius * 0.2f32)..(planet_radius * 0.5f32);
             let moon_radius = rand::thread_rng().gen_range(moon_radius);
 
-            let distance = self.bodies[planet_index].get_orbital_radius(&self);
+            let distance = self.bodies[planet_index].get_orbital_radius(self);
             let distance = distance + moon_radius * 3f32;
 
             let moon_index = self.bodies.len();
@@ -73,7 +73,7 @@ impl Simulation {
             self.bodies[index].update_pos(parent_pos, parent_radius);
         }
 
-        let moon_indices = self.bodies[index].moon_indices().map(|&i| i).collect::<Vec<usize>>();
+        let moon_indices = self.bodies[index].moon_indices().copied().collect::<Vec<usize>>();
         for moon_index in moon_indices {
             self.update_body(moon_index);
         }

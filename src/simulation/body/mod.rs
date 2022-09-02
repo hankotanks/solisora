@@ -72,7 +72,7 @@ impl Body {
             let moon = &simulation.bodies[moon_index];
 
             let o = moon.orbit.unwrap();
-            let o = o.distance() + moon.get_orbital_radius(&simulation);
+            let o = o.distance() + moon.get_orbital_radius(simulation);
 
             r = r.max(o);
         }
