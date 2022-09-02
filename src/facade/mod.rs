@@ -45,6 +45,7 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
                 window_id,
             } if window_id == window.id() => if !state.input(event) {
                 match event {
+                    // Handle close behavior
                     WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
@@ -58,7 +59,7 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
                     // Zoom controls on MouseWheel
                     WindowEvent::MouseWheel { delta, .. } => {
                         if let MouseScrollDelta::LineDelta(.., mut line_delta) = delta {
-                            line_delta *= 0.1f32;
+                            line_delta *= -0.1f32;
 
                             // TODO: Maybe Camera should be pulled out of State and used alongside it
                             state.camera.zoom(line_delta);                            
@@ -88,8 +89,16 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
                     } => {
                         mouse_panning_toggle = false;
                     },
-                    WindowEvent::Resized(physical_size) => state.resize(*physical_size),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(**new_inner_size),
+
+                    // Resizing
+                    WindowEvent::Resized(physical_size) => {
+                        state.resize(*physical_size)
+                    },
+                    
+                    // Adjust inner size
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => { 
+                        state.resize(**new_inner_size) 
+                    },
                     _ => {}
                 }
             },
