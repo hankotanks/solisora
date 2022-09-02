@@ -1,4 +1,3 @@
-mod point;
 pub(crate) mod body;
 
 use rand::Rng;

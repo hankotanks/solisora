@@ -1,7 +1,7 @@
 use std::f32::consts::TAU;
 use rand::Rng;
 
-use crate::simulation::point;
+use crate::prelude::Point;
 
 #[derive(Copy, Clone)]
 pub(super) struct Orbit {
@@ -33,7 +33,7 @@ impl Orbit {
         }
     }
 
-    pub(super) fn update(&mut self, center: point::Point, multiplier: f32) -> point::Point {
+    pub(super) fn update(&mut self, center: Point, multiplier: f32) -> Point {
         let mut offset = 0.0174f32;
 
         offset *= self.speed;
@@ -46,7 +46,7 @@ impl Orbit {
         self.angle += offset;
         self.angle %= TAU;
 
-        point::Point::new(
+        Point::new(
             center.x() + self.distance * self.angle.cos(),
             center.y() + self.distance * self.angle.sin()
         )
