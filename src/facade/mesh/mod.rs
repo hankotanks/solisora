@@ -2,8 +2,6 @@ mod planetoid;
 
 use wgpu::util::DeviceExt;
 
-use crate::prelude::Point;
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct Vertex {
@@ -28,7 +26,7 @@ impl Vertex {
 trait Meshable {
     fn vertices(&self) -> Vec<Vertex>;
     fn indices(&self) -> Vec<u16>;
-    fn recalculate_vertices(&mut self, pos: Point);
+    fn recalculate_vertices(&mut self, pos: cgmath::Point2<f32>);
 }
 
 pub(super) struct Mesh {

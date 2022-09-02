@@ -1,19 +1,19 @@
 mod orbit;
 
-use crate::prelude::Point;
+use cgmath::Point2;
 
 use super::Simulation;
 
 #[derive(Clone)]
 pub(crate) struct Body {
-    pos: Point,
+    pos: Point2<f32>,
     radius: f32,
     orbit: Option<orbit::Orbit>,
     moon_indices: Vec<usize>
 }
 
 impl Body {
-    pub(crate) fn pos(&self) -> Point {
+    pub(crate) fn pos(&self) -> Point2<f32> {
         self.pos
     }
 
@@ -37,7 +37,7 @@ impl Body {
 impl Default for Body {
     fn default() -> Self {
         Self { 
-            pos: Point::default(),
+            pos: Point2::new(0f32, 0f32),
             radius: Self::SUN_RADIUS, 
             orbit: None, 
             moon_indices: Vec::new() 
@@ -50,7 +50,7 @@ impl Body {
 
     pub(crate) fn new(radius: f32) -> Self {
         Self {
-            pos: Point::default(),
+            pos: Point2::new(0f32, 0f32),
             radius,
             orbit: None,
             moon_indices: Vec::new()
@@ -80,7 +80,7 @@ impl Body {
         r
     }
 
-    pub(crate) fn update_pos(&mut self, parent_pos: Point, parent_radius: f32) {
+    pub(crate) fn update_pos(&mut self, parent_pos: Point2<f32>, parent_radius: f32) {
         if let Some(mut orbit) = self.orbit {
             let multiplier = Self::SUN_RADIUS / parent_radius;
 

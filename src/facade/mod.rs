@@ -1,4 +1,5 @@
 mod mesh;
+mod camera;
 mod state;
 
 use winit::{

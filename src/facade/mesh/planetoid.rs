@@ -1,12 +1,12 @@
 use rand::Rng;
 
-use crate::prelude::Point;
+use cgmath::Point2;
 
 use super::Vertex;
 use super::Meshable;
 
 pub(super) struct Planetoid {
-  pos: Point,
+  pos: Point2<f32>,
   radius: f32,
   color: [f32; 3],
   vertices: Vec<Vertex>
@@ -58,7 +58,7 @@ impl Meshable for Planetoid {
         Self::INDICES.to_vec()
     }
 
-    fn recalculate_vertices(&mut self, pos: Point) {
+    fn recalculate_vertices(&mut self, pos: Point2<f32>) {
         self.pos = pos;
         
         self.vertices.clear();
@@ -67,8 +67,8 @@ impl Meshable for Planetoid {
         self.vertices.push(
             Vertex {
                 position: [
-                    self.pos.x(),
-                    self.pos.y(),
+                    self.pos.x,
+                    self.pos.y,
                     0f32
                 ],
                 color: self.color
@@ -79,8 +79,8 @@ impl Meshable for Planetoid {
         self.vertices.push(
             Vertex {
                 position: [
-                    self.radius + self.pos.x(),
-                    self.pos.y(),
+                    self.radius + self.pos.x,
+                    self.pos.y,
                     0f32 
                 ],
                 color: self.color
@@ -94,8 +94,8 @@ impl Meshable for Planetoid {
             self.vertices.push(
                 Vertex {
                     position: [
-                        i.cos() * self.radius + self.pos.x(),
-                        i.sin() * self.radius + self.pos.y(),
+                        i.cos() * self.radius + self.pos.x,
+                        i.sin() * self.radius + self.pos.y,
                         0f32
                     ],
                     color: self.color
@@ -106,7 +106,7 @@ impl Meshable for Planetoid {
 }
 
 impl Planetoid {
-  pub(super) fn new(pos: Point, radius: f32) -> Self {
+  pub(super) fn new(pos: Point2<f32>, radius: f32) -> Self {
       let mut planetoid = Self {
           pos,
           radius,
