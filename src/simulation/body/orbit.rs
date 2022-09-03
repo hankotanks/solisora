@@ -1,7 +1,10 @@
 use std::f32::consts::TAU;
 
 use rand::Rng;
-use cgmath::{Point2, MetricSpace};
+use cgmath::{
+    Point2, 
+    MetricSpace
+};
 
 #[derive(Copy, Clone)]
 pub(super) struct Orbit {
