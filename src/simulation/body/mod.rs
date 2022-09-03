@@ -54,7 +54,7 @@ impl std::hash::Hash for Body {
 }
 
 impl Body {
-    const SUN_RADIUS: f32 = 0.04;
+    pub(crate) const SUN_RADIUS: f32 = 0.04;
 
     pub(crate) fn new(radius: f32) -> Self {
         Self {

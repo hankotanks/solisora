@@ -38,7 +38,7 @@ impl Simulation {
     fn add(&mut self) -> usize {
         let planet_radius = self.bodies[0].radius();
         let planet_radius = rand::thread_rng().gen_range(
-            (planet_radius * 0.2f32)..(planet_radius * 0.5f32)
+            (planet_radius * 0.1f32)..(planet_radius * 0.5f32)
         );
 
         let planet_index = self.bodies.len();
@@ -46,8 +46,8 @@ impl Simulation {
         self.bodies.push(body::Body::new(planet_radius));
 
         while rand::thread_rng().gen_bool(0.5f64) {
-            let moon_radius = (planet_radius * 0.2f32)..(planet_radius * 0.5f32);
-            let moon_radius = rand::thread_rng().gen_range(moon_radius);
+            let moon_radius = (planet_radius * 0.1f32)..(planet_radius * 0.5f32);
+            let moon_radius = rand::thread_rng().gen_range(moon_radius).max(body::Body::SUN_RADIUS * 0.05f32);
 
             let distance = self.bodies[planet_index].get_orbital_radius(self);
             let distance = distance + moon_radius * 3f32;
