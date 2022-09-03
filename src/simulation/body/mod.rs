@@ -45,8 +45,16 @@ impl Default for Body {
     }
 }
 
+impl std::hash::Hash for Body {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.radius.to_string().hash(state);
+        self.orbit.hash(state);
+        self.moon_indices().copied().collect::<Vec<usize>>().hash(state);
+    }
+}
+
 impl Body {
-    const SUN_RADIUS: f32 = 0.02;
+    const SUN_RADIUS: f32 = 0.04;
 
     pub(crate) fn new(radius: f32) -> Self {
         Self {
@@ -82,6 +90,7 @@ impl Body {
 
     pub(crate) fn update_pos(&mut self, parent_pos: Point2<f32>, parent_radius: f32) {
         if let Some(mut orbit) = self.orbit {
+            // Larger bodies move slower
             let multiplier = Self::SUN_RADIUS / parent_radius;
 
             self.pos = parent_pos;

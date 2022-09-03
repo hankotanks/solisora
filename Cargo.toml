@@ -13,6 +13,7 @@ wgpu = "0.13"
 pollster = "0.2"
 bytemuck = { version = "1.4", features = [ "derive" ] }
 rand = "0.8.5"
+rand_seeder = "0.2.3"
 cgmath = "0.18"
 
 [[bin]]

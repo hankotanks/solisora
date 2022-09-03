@@ -1,6 +1,8 @@
-mod planetoid;
+mod meshable;
 
 use wgpu::util::DeviceExt;
+
+use self::meshable::Meshable;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -23,82 +25,70 @@ impl Vertex {
     }
 }
 
-trait Meshable {
-    fn vertices(&self) -> Vec<Vertex>;
-    fn indices(&self) -> Vec<u16>;
-    fn recalculate_vertices(&mut self, pos: cgmath::Point2<f32>);
-}
-
 pub(super) struct Mesh {
-    objects: Vec<Box<dyn Meshable>>
+    vertices: Vec<Vec<Vertex>>,
+    indices: Vec<u16>,
+    count: u32
 }
 
 impl Mesh {
     pub(super) fn new(simulation: &crate::simulation::Simulation) -> Self {
         let mut mesh = Self {
-            objects: Vec::new()
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            count: 0u32
         };
 
-        for object in simulation.bodies() {
-            mesh.objects.push(
-                Box::new(
-                    planetoid::Planetoid::new(object.pos(), object.radius())
-                )
+        mesh.handle_simulation_update(simulation);
+        let mut offset = 0u16;
+        for (index, object) in simulation.bodies().enumerate() {
+            mesh.indices.append(
+                &mut object.indices().iter().map(|&f| {
+                    f + offset
+                } ).collect::<Vec<u16>>()
             );
+            mesh.count += object.indices().len() as u32;
+
+            offset += mesh.vertices[index].len() as u16;
         }
 
         mesh
     }
 
     pub(super) fn build_vertex_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
-        let mut vertices: Vec<Vertex> = Vec::new();
+        let mut flattened_vertices = Vec::new();
 
-        for object in self.objects.iter() {
-            vertices.append(&mut object.vertices());
+        for mut vertices in self.vertices.iter().cloned() {
+            flattened_vertices.append(&mut vertices);
         }
 
         device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(vertices.as_slice()),
+                contents: bytemuck::cast_slice(flattened_vertices.as_slice()),
                 usage: wgpu::BufferUsages::VERTEX
             }
         )
     }
 
     pub(super) fn build_index_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
-        let mut indices: Vec<u16> = Vec::new();
-
-        let mut offset = 0u16;
-        for object in self.objects.iter() {
-            indices.append(
-                &mut object.indices().iter().map(|i| i + offset).collect::<Vec<u16>>()
-            );
-
-            offset += object.vertices().len() as u16;
-        }
-
         device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(indices.as_slice()),
+                contents: bytemuck::cast_slice(self.indices.as_slice()),
                 usage: wgpu::BufferUsages::INDEX,
             }
         )
     }
 
     pub(super) fn count(&self) -> u32 {
-        let mut c = 0u32;
-        for object in self.objects.iter() {
-            c += object.indices().len() as u32;
-        }
-
-        c
+        self.count
     }
 
     pub(super) fn handle_simulation_update(&mut self, simulation: &crate::simulation::Simulation) {
-        for (index, object) in simulation.bodies().enumerate() {
-            self.objects[index].recalculate_vertices(object.pos());
+        self.vertices.clear();
+        for object in simulation.bodies() {
+            self.vertices.push(object.vertices());
         }
     }
 }

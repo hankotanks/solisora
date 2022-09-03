@@ -1,7 +1,7 @@
 use std::f32::consts::TAU;
-use rand::Rng;
 
-use cgmath::Point2;
+use rand::Rng;
+use cgmath::{Point2, MetricSpace};
 
 #[derive(Copy, Clone)]
 pub(super) struct Orbit {
@@ -19,6 +19,16 @@ impl Orbit {
 
     pub(super) fn distance(&self) -> f32 {
         self.distance
+    }
+}
+
+impl std::hash::Hash for Orbit {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.parent.hash(state);
+        self.distance.to_string().hash(state);
+        // Orbit::angle isn't hashed because it is constantly variable
+        self.counterclockwise.hash(state);
+        self.speed.to_string().hash(state);
     }
 }
 
@@ -43,12 +53,26 @@ impl Orbit {
             offset *= -1f32;
         }
 
+        let distance = {
+            let angle = (self.angle + offset) % TAU;
+            Point2::new(
+                center.x + self.distance * angle.cos(),
+                center.y + self.distance * angle.sin()
+            ).distance((0f32, 0f32).into())
+        };
+
+        // Bodies further from the Sun move slower
+        let distance_multiplier = 1f32 - (distance / 2f32.sqrt());
+        offset *= distance_multiplier;
+
         self.angle += offset;
         self.angle %= TAU;
 
-        Point2::new(
+        let p = Point2::new(
             center.x + self.distance * self.angle.cos(),
             center.y + self.distance * self.angle.sin()
-        )
+        );
+
+        p
     }
 }
