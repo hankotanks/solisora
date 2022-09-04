@@ -71,11 +71,9 @@ impl Orbit {
         self.angle += offset;
         self.angle %= TAU;
 
-        let p = Point2::new(
+        Point2::new(
             center.x + self.distance * self.angle.cos(),
             center.y + self.distance * self.angle.sin()
-        );
-
-        p
+        )
     }
 }

@@ -85,4 +85,8 @@ impl Simulation {
     pub(crate) fn bodies(&self) -> impl Iterator<Item = &body::Body> {
         self.bodies.iter()
     }
+
+    pub(crate) fn bodies_with_stations(&self) -> impl Iterator<Item = &body::Body> {
+        self.bodies.iter().filter(|f| matches!(f.feature(), Some(body::BodyFeature::Station)))
+    }
 }

@@ -9,7 +9,8 @@ pub(crate) struct Body {
     pos: Point2<f32>,
     radius: f32,
     orbit: Option<orbit::Orbit>,
-    moon_indices: Vec<usize>
+    moon_indices: Vec<usize>,
+    feature: Option<BodyFeature>
 }
 
 impl Body {
@@ -23,6 +24,10 @@ impl Body {
 
     pub(crate) fn moon_indices(&self) -> impl Iterator<Item = &usize> {
         self.moon_indices.iter()
+    }
+
+    pub(crate) fn feature(&self) -> Option<BodyFeature> {
+        self.feature.as_ref().cloned()
     }
 
     pub(crate) fn parent(&self) -> Option<usize> {
@@ -40,7 +45,8 @@ impl Default for Body {
             pos: Point2::new(0f32, 0f32),
             radius: Self::SUN_RADIUS, 
             orbit: None, 
-            moon_indices: Vec::new() 
+            moon_indices: Vec::new(),
+            feature: None
         }
     }
 }
@@ -61,7 +67,8 @@ impl Body {
             pos: Point2::new(0f32, 0f32),
             radius,
             orbit: None,
-            moon_indices: Vec::new()
+            moon_indices: Vec::new(),
+            feature: None
         }
     }
 
@@ -99,4 +106,9 @@ impl Body {
             self.orbit = Some(orbit);
         } 
     }
+}
+
+#[derive(Clone)]
+pub(crate) enum BodyFeature {
+    Station
 }
