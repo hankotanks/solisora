@@ -80,6 +80,10 @@ impl Body {
         self.orbit = Some(orbit::Orbit::new(parent, distance));
     }
 
+    pub(crate) fn add_feature(&mut self, feature: BodyFeature) {
+        self.feature = Some(feature);
+    }
+
     pub(crate) fn get_orbital_radius(&self, simulation: &Simulation) -> f32 {
         let mut r = self.radius * 2f32;
 

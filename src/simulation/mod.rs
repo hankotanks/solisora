@@ -1,15 +1,18 @@
 pub(crate) mod body;
+pub(crate) mod ship;
 
 use rand::Rng;
 
 pub(crate) struct Simulation {
-    bodies: Vec<body::Body>
+    bodies: Vec<body::Body>,
+    ships: Vec<ship::Ship>
 }
 
 impl Default for Simulation {
     fn default() -> Self {
         let mut simulation = Self { 
-            bodies: vec![body::Body::default()] 
+            bodies: vec![body::Body::default()],
+            ships: Vec::new()
         };
         
         loop {
@@ -28,6 +31,12 @@ impl Default for Simulation {
 
         // Update once to put bodies in position
         simulation.update();
+
+        for _ in 0..50 {
+            simulation.ships.push(
+                ship::Ship::new(&simulation)
+            );
+        }
 
         simulation
     }
@@ -58,11 +67,24 @@ impl Simulation {
             self.bodies[moon_index].add_orbit(planet_index, distance);
         }
 
+        let body_with_station = planet_index..self.bodies.len();
+        let body_with_station = rand::thread_rng().gen_range(body_with_station);
+        self.bodies[body_with_station].add_feature(
+            body::BodyFeature::Station
+        );
+
         planet_index
     }
 
     pub(crate) fn update(&mut self) {
         self.update_body(0);
+
+        for entity_index in (0..self.ships.len()).rev() {
+            let mut entity = self.ships.remove(entity_index);
+            entity.update(&self);
+
+            self.ships.push(entity);
+        }
     }
 
     fn update_body(&mut self, index: usize) {
@@ -86,7 +108,19 @@ impl Simulation {
         self.bodies.iter()
     }
 
-    pub(crate) fn bodies_with_stations(&self) -> impl Iterator<Item = &body::Body> {
-        self.bodies.iter().filter(|f| matches!(f.feature(), Some(body::BodyFeature::Station)))
+    pub(crate) fn ships(&self) -> impl Iterator<Item = &ship::Ship> {
+        self.ships.iter()
+    }
+
+    // TODO: Consolidate the following method with the preceeding
+    pub(crate) fn bodies_with_stations(&self) -> Vec<usize> {
+        let mut indices = Vec::new();
+        self.bodies.iter().enumerate().for_each(|(index, b)| { 
+            if matches!(b.feature(), Some(body::BodyFeature::Station)) {
+                indices.push(index);
+            }
+        } );
+
+        indices
     }
 }

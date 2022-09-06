@@ -105,3 +105,30 @@ impl Meshable for crate::simulation::body::Body {
         Self::INDICES.to_vec()
     }
 }
+
+impl Meshable for crate::simulation::ship::Ship {
+    fn vertices(&self) -> Vec<Vertex> {
+        let mut prng = SipHasher::from(self).into_rng();
+
+        let color = [
+            prng.gen_range(0f32..1f32),
+            prng.gen_range(0f32..1f32),
+            prng.gen_range(0f32..1f32)
+        ];
+
+        let min_angle = self.angle() - 0.5235988;
+        let max_angle = self.angle() + 0.5235988;
+
+        let size = crate::simulation::body::Body::SUN_RADIUS * 0.5;
+
+        vec![
+            Vertex { position: [ self.pos().x, self.pos().y, 0f32 ], color },
+            Vertex { position: [ size * min_angle.sin() + self.pos().x, size * min_angle.cos() + self.pos().y, 0f32 ], color: [ 0f32, 0f32, 0f32 ] },
+            Vertex { position: [ size * max_angle.sin() + self.pos().x, size * max_angle.cos() + self.pos().y, 0f32 ], color: [ 0f32, 0f32, 0f32 ] },
+        ]
+    }
+
+    fn indices(&self) -> Vec<u16> {
+        vec![0, 1, 2]
+    }
+}
