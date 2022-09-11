@@ -64,7 +64,7 @@ impl Orbit {
             ).distance((0f32, 0f32).into())
         };
 
-        // Bodies further from the Sun move slower
+        // Planets further from the Sun move slower
         let distance_multiplier = 1f32 - (distance / 2f32.sqrt());
         offset *= distance_multiplier;
 

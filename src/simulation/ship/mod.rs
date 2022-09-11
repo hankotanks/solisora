@@ -53,7 +53,7 @@ impl Ship {
             },
             ShipBehavior::Trader => {
                 Some(ShipGoal::ArriveAt( {
-                    *simulation.bodies_with_stations().choose(&mut rand::thread_rng()).unwrap()
+                    *simulation.planets_with_stations().choose(&mut rand::thread_rng()).unwrap()
                 } ))
             },
             ShipBehavior::Pirate => {
@@ -70,11 +70,11 @@ impl Ship {
         if let Some(goal) = &self.goal {
             match goal {
                 ShipGoal::ArriveAt(index) => {
-                    let goal_pos = simulation.bodies[*index].pos();
+                    let goal_pos = simulation.planets[*index].pos();
     
                     let distance = self.pos.distance2(goal_pos);
 
-                    if distance <= simulation.bodies[*index].radius().powf(2f32) {
+                    if distance <= simulation.planets[*index].radius().powf(2f32) {
                         self.clear_objective();
                         self.set_objective(simulation);
 

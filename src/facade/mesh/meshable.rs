@@ -8,7 +8,7 @@ pub(super) trait Meshable {
     fn indices(&self) -> Vec<u16>;
 }
 
-impl crate::simulation::body::Body {
+impl crate::simulation::planet::Planet {
     const INDICES: &'static [u16] = &[
       1, 2, 0, 
       2, 3, 0, 
@@ -45,7 +45,7 @@ impl crate::simulation::body::Body {
   ];
 }
 
-impl Meshable for crate::simulation::body::Body {
+impl Meshable for crate::simulation::planet::Planet {
     fn vertices(&self) -> Vec<Vertex> {
         let mut vertices = Vec::new();
 
@@ -118,7 +118,7 @@ impl Meshable for crate::simulation::ship::Ship {
         let min_angle = self.angle() - 0.2617994;
         let max_angle = self.angle() + 0.2617994;
 
-        let size = crate::simulation::body::Body::SUN_RADIUS * 0.5;
+        let size = crate::simulation::planet::Planet::SUN_RADIUS * 0.5;
 
         vec![
             Vertex { position: [ self.pos().x, self.pos().y, 0f32 ], color },

@@ -41,13 +41,13 @@ impl Mesh {
 
         mesh.handle_simulation_update(simulation);
         let mut offset = 0u16;
-        for (index, body) in simulation.bodies().enumerate() {
+        for (index, planet) in simulation.planets().enumerate() {
             mesh.indices.append(
-                &mut body.indices().iter().map(|&f| {
+                &mut planet.indices().iter().map(|&f| {
                     f + offset
                 } ).collect::<Vec<u16>>()
             );
-            mesh.count += body.indices().len() as u32;
+            mesh.count += planet.indices().len() as u32;
 
             offset += mesh.vertices[index].len() as u16;
         }
@@ -98,8 +98,8 @@ impl Mesh {
 
     pub(super) fn handle_simulation_update(&mut self, simulation: &crate::simulation::Simulation) {
         self.vertices.clear();
-        for body in simulation.bodies() {
-            self.vertices.push(body.vertices());
+        for planet in simulation.planets() {
+            self.vertices.push(planet.vertices());
         }
 
         for ship in simulation.ships() {

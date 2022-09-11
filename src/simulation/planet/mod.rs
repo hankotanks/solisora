@@ -5,15 +5,15 @@ use cgmath::Point2;
 use super::Simulation;
 
 #[derive(Clone)]
-pub(crate) struct Body {
+pub(crate) struct Planet {
     pos: Point2<f32>,
     radius: f32,
     orbit: Option<orbit::Orbit>,
     moon_indices: Vec<usize>,
-    feature: Option<BodyFeature>
+    feature: Option<PlanetaryFeature>
 }
 
-impl Body {
+impl Planet {
     pub(crate) fn pos(&self) -> Point2<f32> {
         self.pos
     }
@@ -26,7 +26,7 @@ impl Body {
         self.moon_indices.iter()
     }
 
-    pub(crate) fn feature(&self) -> Option<BodyFeature> {
+    pub(crate) fn feature(&self) -> Option<PlanetaryFeature> {
         self.feature.as_ref().cloned()
     }
 
@@ -39,7 +39,7 @@ impl Body {
     }
 }
 
-impl Default for Body {
+impl Default for Planet {
     fn default() -> Self {
         Self { 
             pos: Point2::new(0f32, 0f32),
@@ -51,7 +51,7 @@ impl Default for Body {
     }
 }
 
-impl std::hash::Hash for Body {
+impl std::hash::Hash for Planet {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.radius.to_string().hash(state);
         self.orbit.hash(state);
@@ -59,7 +59,7 @@ impl std::hash::Hash for Body {
     }
 }
 
-impl Body {
+impl Planet {
     pub(crate) const SUN_RADIUS: f32 = 0.04;
 
     pub(crate) fn new(radius: f32) -> Self {
@@ -80,7 +80,7 @@ impl Body {
         self.orbit = Some(orbit::Orbit::new(parent, distance));
     }
 
-    pub(crate) fn add_feature(&mut self, feature: BodyFeature) {
+    pub(crate) fn add_feature(&mut self, feature: PlanetaryFeature) {
         self.feature = Some(feature);
     }
 
@@ -88,7 +88,7 @@ impl Body {
         let mut r = self.radius * 2f32;
 
         for &moon_index in self.moon_indices() {
-            let moon = &simulation.bodies[moon_index];
+            let moon = &simulation.planets[moon_index];
 
             let o = moon.orbit.unwrap();
             let o = o.distance() + moon.get_orbital_radius(simulation);
@@ -101,7 +101,7 @@ impl Body {
 
     pub(crate) fn update_pos(&mut self, parent_pos: Point2<f32>, parent_radius: f32) {
         if let Some(mut orbit) = self.orbit {
-            // Larger bodies move slower
+            // Larger planets move slower
             let multiplier = Self::SUN_RADIUS / parent_radius;
 
             self.pos = parent_pos;
@@ -113,6 +113,6 @@ impl Body {
 }
 
 #[derive(Clone)]
-pub(crate) enum BodyFeature {
+pub(crate) enum PlanetaryFeature {
     Station
 }
