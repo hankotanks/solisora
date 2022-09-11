@@ -1,8 +1,11 @@
 use cgmath::{MetricSpace, Rad, Angle};
-use rand::{seq::{SliceRandom, IteratorRandom}, Rng};
+use rand::seq::IteratorRandom;
+use rand::Rng;
 use strum::IntoEnumIterator;
 
 use crate::simulation::Simulation;
+
+use super::planet;
 
 #[derive(Clone)]
 pub(crate) struct Ship {
@@ -53,7 +56,7 @@ impl Ship {
             },
             ShipBehavior::Trader => {
                 Some(ShipGoal::ArriveAt( {
-                    *simulation.planets_with_stations().choose(&mut rand::thread_rng()).unwrap()
+                    simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))).choose(&mut rand::thread_rng()).unwrap().index()
                 } ))
             },
             ShipBehavior::Pirate => {

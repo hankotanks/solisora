@@ -6,6 +6,7 @@ use super::Simulation;
 
 #[derive(Clone)]
 pub(crate) struct Planet {
+    index: usize,
     pos: Point2<f32>,
     radius: f32,
     orbit: Option<orbit::Orbit>,
@@ -14,6 +15,9 @@ pub(crate) struct Planet {
 }
 
 impl Planet {
+    pub(crate) fn index(&self) -> usize {
+        self.index
+    }
     pub(crate) fn pos(&self) -> Point2<f32> {
         self.pos
     }
@@ -42,6 +46,7 @@ impl Planet {
 impl Default for Planet {
     fn default() -> Self {
         Self { 
+            index: 0usize,
             pos: Point2::new(0f32, 0f32),
             radius: Self::SUN_RADIUS, 
             orbit: None, 
@@ -62,8 +67,9 @@ impl std::hash::Hash for Planet {
 impl Planet {
     pub(crate) const SUN_RADIUS: f32 = 0.04;
 
-    pub(crate) fn new(radius: f32) -> Self {
+    pub(crate) fn new(index: usize, radius: f32) -> Self {
         Self {
+            index,
             pos: Point2::new(0f32, 0f32),
             radius,
             orbit: None,
@@ -114,5 +120,6 @@ impl Planet {
 
 #[derive(Clone)]
 pub(crate) enum PlanetaryFeature {
-    Station
+    Station,
+    Resources
 }

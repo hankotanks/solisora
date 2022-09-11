@@ -1,7 +1,11 @@
 pub(crate) mod planet;
 pub(crate) mod ship;
 
+use std::mem::Discriminant;
+
 use rand::Rng;
+
+use self::planet::PlanetaryFeature;
 
 pub(crate) struct Simulation {
     planets: Vec<planet::Planet>,
@@ -52,7 +56,7 @@ impl Simulation {
 
         let planet_index = self.planets.len();
 
-        self.planets.push(planet::Planet::new(planet_radius));
+        self.planets.push(planet::Planet::new(planet_index, planet_radius));
 
         while rand::thread_rng().gen_bool(0.5f64) {
             let moon_radius = (planet_radius * 0.1f32)..(planet_radius * 0.5f32);
@@ -63,7 +67,7 @@ impl Simulation {
 
             let moon_index = self.planets.len();
             self.planets[planet_index].add_moon(moon_index);
-            self.planets.push(planet::Planet::new(moon_radius));
+            self.planets.push(planet::Planet::new(moon_index, moon_radius));
             self.planets[moon_index].add_orbit(planet_index, distance);
         }
 
@@ -112,14 +116,17 @@ impl Simulation {
         self.ships.iter()
     }
 
-    pub(crate) fn planets_with_stations(&self) -> Vec<usize> {
-        let mut indices = Vec::new();
-        self.planets.iter().enumerate().for_each(|(index, b)| { 
-            if matches!(b.feature(), Some(planet::PlanetaryFeature::Station)) {
-                indices.push(index);
+    pub(crate) fn planets_with_feature(&self, filter: Option<Discriminant<PlanetaryFeature>>) -> impl Iterator<Item = &planet::Planet> {
+        self.planets.iter().filter(move |planet| {
+            match planet.feature() {
+                Some(feature) => {
+                    match filter {
+                        Some(d) => std::mem::discriminant(&feature) == d,
+                        None => false
+                    }
+                },
+                None => filter.is_none()
             }
-        } );
-
-        indices
+        } )
     }
 }
