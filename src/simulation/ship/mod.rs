@@ -1,22 +1,17 @@
 use cgmath::{MetricSpace, Rad, Angle};
-use rand::{seq::SliceRandom, Rng};
+use rand::{seq::{SliceRandom, IteratorRandom}, Rng};
+use strum::IntoEnumIterator;
 
 use crate::simulation::Simulation;
 
 #[derive(Clone)]
 pub(crate) struct Ship {
     goal: Option<ShipGoal>,
+    behavior: ShipBehavior,
     pos: cgmath::Point2<f32>,
     speed: f32,
     initial_speed: f32,
     angle: f32
-}
-
-impl std::hash::Hash for Ship {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.goal.hash(state);
-        self.initial_speed.to_string().hash(state);
-    }
 }
 
 impl Ship {
@@ -27,6 +22,10 @@ impl Ship {
     pub(crate) fn angle(&self) -> f32 {
         self.angle
     }
+
+    pub(crate) fn behavior(&self) -> ShipBehavior {
+        self.behavior
+    }
 }
 
 impl Ship {
@@ -34,6 +33,7 @@ impl Ship {
         let speed = rand::thread_rng().gen::<f32>() * 0.01f32;
         let mut ship = Self {
             goal: None,
+            behavior: ShipBehavior::iter().choose(&mut rand::thread_rng()).unwrap(),
             pos: (0f32, 0f32).into(),
             speed,
             initial_speed: speed,
@@ -47,11 +47,19 @@ impl Ship {
 
 impl Ship {
     fn set_objective(&mut self, simulation: &Simulation) {
-        self.goal = Some(
-            ShipGoal::ArriveAt( {
-                *simulation.bodies_with_stations().choose(&mut rand::thread_rng()).unwrap()
-            } )
-        );
+        self.goal = match self.behavior {
+            ShipBehavior::Miner => {
+                None
+            },
+            ShipBehavior::Trader => {
+                Some(ShipGoal::ArriveAt( {
+                    *simulation.bodies_with_stations().choose(&mut rand::thread_rng()).unwrap()
+                } ))
+            },
+            ShipBehavior::Pirate => {
+                None
+            }
+        };
     }
 
     fn clear_objective(&mut self) {
@@ -81,14 +89,21 @@ impl Ship {
 
                     self.angle = Rad::atan2(dx, dy).0 + 3.14;
 
-                    self.speed *= 1.05f32;    
+                    self.speed *= 1.05f32;
                 }
             }
         }
     }
 }
 
-#[derive(Copy, Clone, std::hash::Hash)]
+#[derive(Copy, Clone)]
 enum ShipGoal {
     ArriveAt(usize)
+}
+
+#[derive(Copy, Clone, strum_macros::EnumIter)]
+pub(crate) enum ShipBehavior {
+    Miner,
+    Trader,
+    Pirate
 }

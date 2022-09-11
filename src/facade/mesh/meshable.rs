@@ -108,16 +108,15 @@ impl Meshable for crate::simulation::body::Body {
 
 impl Meshable for crate::simulation::ship::Ship {
     fn vertices(&self) -> Vec<Vertex> {
-        let mut prng = SipHasher::from(self).into_rng();
+        use crate::simulation::ship::ShipBehavior;
+        let color = match self.behavior() {
+            ShipBehavior::Miner => [1f32, 0.4f32, 0f32],
+            ShipBehavior::Trader => [0f32, 0.6f32, 1f32],
+            ShipBehavior::Pirate => [1f32, 0f32, 0f32]
+        };
 
-        let color = [
-            prng.gen_range(0f32..1f32),
-            prng.gen_range(0f32..1f32),
-            prng.gen_range(0f32..1f32)
-        ];
-
-        let min_angle = self.angle() - 0.5235988;
-        let max_angle = self.angle() + 0.5235988;
+        let min_angle = self.angle() - 0.2617994;
+        let max_angle = self.angle() + 0.2617994;
 
         let size = crate::simulation::body::Body::SUN_RADIUS * 0.5;
 

@@ -112,7 +112,6 @@ impl Simulation {
         self.ships.iter()
     }
 
-    // TODO: Consolidate the following method with the preceeding
     pub(crate) fn bodies_with_stations(&self) -> Vec<usize> {
         let mut indices = Vec::new();
         self.bodies.iter().enumerate().for_each(|(index, b)| { 
