@@ -98,7 +98,7 @@ impl Ship {
                             }
                         }
 
-                        Some(ShipGoal::HarvestResources(closest, 100))
+                        Some(ShipGoal::VisitPlanet(closest))
                     }
                 }
             },
