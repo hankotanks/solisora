@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 
 use crate::simulation::Simulation;
 
-use super::planet;
+use super::planet::{self, PlanetaryFeature};
 
 #[derive(Clone)]
 pub(crate) struct Ship {
@@ -57,50 +57,32 @@ impl Ship {
         self.goal = match self.behavior {
             ShipBehavior::Miner => {
                 match self.goal {
-                    Some(ShipGoal::HarvestResources(index, progress)) => {
-                        if progress == 0 {
-                            let mut closest = 0;
-                            let mut closest_distance = std::f32::MAX;
-                            for station in simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))) {
-                                let distance = self.pos.distance2(station.pos());
-                                if distance < closest_distance {
-                                    closest = station.index();
-                                    closest_distance = distance;
-                                }
-                            }
-
-                            self.speed = self.initial_speed;
-    
-                            Some(ShipGoal::DepositResources(closest))
-                        } else {
-                            Some(ShipGoal::HarvestResources(index, progress - 1))
-                        }
-                        
-                    },
                     Some(ShipGoal::VisitPlanet(index)) => {
-                        let goal_pos = simulation.planets[index].pos();
-    
-                        let distance = self.pos.distance2(goal_pos);
-                        if distance <= simulation.planets[index].radius().powf(2f32) {
-                            Some(ShipGoal::HarvestResources(index, 100))
-                        } else {
-                            Some(ShipGoal::VisitPlanet(index))
+                        match simulation.planets[index].feature() {
+                            Some(PlanetaryFeature::Station) => {
+                                // find nearest resources
+                                Some(ShipGoal::VisitPlanet(
+                                    simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources)))
+                                ))
+                            },
+                            Some(PlanetaryFeature::Resources) => {
+                                // wait at asteroid
+                                Some(ShipGoal::Wait(index, 100))
+                            },
+                            _ => panic!()
                         }
+                    },
+                    Some(ShipGoal::Wait(..)) => {
+                        Some(ShipGoal::VisitPlanet(
+                            simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Station)))
+                        ))
+                    },
+                    None => {
+                        Some(ShipGoal::VisitPlanet(
+                            simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources)))
+                        ))
                     }
-                    _ => {
-                        let mut closest = 0;
-                        let mut closest_distance = 2f32;
-                        for station in simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Resources))) {
-                            let distance = self.pos.distance2(station.pos());
-                            if distance < closest_distance {
-                                closest = station.index();
-                                closest_distance = distance;
-                            }
-                        }
-
-                        Some(ShipGoal::VisitPlanet(closest))
-                    }
-                }
+                }                
             },
             ShipBehavior::Trader => {
                 Some(ShipGoal::VisitPlanet( {
@@ -118,7 +100,7 @@ impl Ship {
     pub(crate) fn update(&mut self, simulation: &Simulation) {
         if let Some(goal) = &self.goal {
             match goal {
-                ShipGoal::VisitPlanet(index) | ShipGoal::DepositResources(index) => {
+                ShipGoal::VisitPlanet(index) => {
                     let goal_pos = simulation.planets[*index].pos();
     
                     let distance = self.pos.distance2(goal_pos);
@@ -138,10 +120,14 @@ impl Ship {
 
                     self.speed *= 1.05f32;
                 },
-                ShipGoal::HarvestResources(index, ..) => {
+                ShipGoal::Wait(index, counter) => {
                     self.pos = simulation.planets[*index].pos();
 
-                    self.set_objective(simulation);
+                    if counter > &0usize {
+                        self.goal = Some(ShipGoal::Wait(*index, counter - 1usize));
+                    } else {
+                        self.set_objective(simulation);
+                    }
                 }
             }
         }
@@ -151,8 +137,7 @@ impl Ship {
 #[derive(Copy, Clone)]
 enum ShipGoal {
     VisitPlanet(usize),
-    HarvestResources(usize, usize),
-    DepositResources(usize)
+    Wait(usize, usize)
 }
 
 #[derive(Copy, Clone, strum_macros::EnumIter)]

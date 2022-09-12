@@ -3,6 +3,7 @@ pub(crate) mod ship;
 
 use std::mem::Discriminant;
 
+use cgmath::MetricSpace;
 use rand::Rng;
 
 use self::planet::PlanetaryFeature;
@@ -137,5 +138,19 @@ impl Simulation {
                 None => filter.is_none()
             }
         } )
+    }
+
+    pub(crate) fn closest_planet_with_feature(&self, pos: cgmath::Point2<f32>, filter: Option<Discriminant<PlanetaryFeature>>) -> usize {
+        let mut closest = 0;
+        let mut closest_distance = std::f32::MAX;
+        for station in self.planets_with_feature(filter) {
+            let distance = pos.distance2(station.pos());
+            if distance < closest_distance {
+                closest = station.index();
+                closest_distance = distance;
+            }
+        }
+
+        closest
     }
 }
