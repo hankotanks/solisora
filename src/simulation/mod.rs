@@ -37,7 +37,7 @@ impl Default for Simulation {
         simulation.update();
 
         // TODO: Not all ships are rendered...
-        for _ in 0..50 {
+        for _ in 0..300 {
             simulation.ships.push(
                 ship::Ship::new(&simulation)
             );
@@ -80,9 +80,11 @@ impl Simulation {
 
         let planet_with_resources = planet_index..self.planets.len();
         let planet_with_resources = rand::thread_rng().gen_range(planet_with_resources);
-        self.planets[planet_with_resources].add_feature(
-            planet::PlanetaryFeature::Resources
-        );
+        if self.planets[planet_with_resources].feature().is_none() {
+            self.planets[planet_with_resources].add_feature(
+                planet::PlanetaryFeature::Resources
+            );
+        }
 
         planet_index
     }

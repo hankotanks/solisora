@@ -18,12 +18,15 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
     let mut mesh = mesh::Mesh::new(&simulation);
     let mut state = state::State::new(&window).await;
 
+    let mut toggle = true;
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                // Advance simulation, update mesh to reflect new position, and render changes
-                simulation.update();
-                mesh.handle_simulation_update(&simulation);
+                if toggle {
+                    // Advance simulation, update mesh to reflect new position, and render changes
+                    simulation.update();
+                    mesh.handle_simulation_update(&simulation);
+                }
 
                 state.update(&mesh);
 
@@ -52,6 +55,19 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
                             },
                         ..
                     } => *control_flow = ControlFlow::Exit,
+
+                    // Pausing the Simulation
+                    WindowEvent::KeyboardInput { 
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Space),
+                                ..
+                            },
+                        .. 
+                    } => {
+                        toggle = !toggle;
+                    },
 
                     // Resizing
                     WindowEvent::Resized(physical_size) => {
