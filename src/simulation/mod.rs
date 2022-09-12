@@ -69,6 +69,10 @@ impl Simulation {
             self.planets[planet_index].add_moon(moon_index);
             self.planets.push(planet::Planet::new(moon_index, moon_radius));
             self.planets[moon_index].add_orbit(planet_index, distance);
+            
+            if rand::thread_rng().gen_bool(0.4f64) {
+                self.planets[moon_index].add_feature(planet::PlanetaryFeature::Resources);
+            }
         }
 
         let planet_with_station = planet_index..self.planets.len();

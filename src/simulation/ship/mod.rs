@@ -37,7 +37,11 @@ impl Ship {
         let mut ship = Self {
             goal: None,
             behavior: ShipBehavior::iter().choose(&mut rand::thread_rng()).unwrap(),
-            pos: (0f32, 0f32).into(),
+            pos: {
+                simulation.planets_with_feature(
+                    Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))
+                ).choose(&mut rand::thread_rng()).unwrap().pos()
+            },
             speed,
             initial_speed: speed,
             angle: 0f32
@@ -52,11 +56,40 @@ impl Ship {
     fn set_objective(&mut self, simulation: &Simulation) {
         self.goal = match self.behavior {
             ShipBehavior::Miner => {
-                None
+                match self.goal {
+                    Some(ShipGoal::HarvestResources(..)) => {
+                        let mut closest = 0;
+                        let mut closest_distance = 2f32;
+                        for station in simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))) {
+                            let distance = self.pos.distance2(station.pos());
+                            if distance < closest_distance {
+                                closest = station.index();
+                                closest_distance = distance;
+                            }
+                        }
+
+                        Some(ShipGoal::DepositResources(closest))
+                    },
+                    _ => {
+                        let mut closest = 0;
+                        let mut closest_distance = 2f32;
+                        for station in simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Resources))) {
+                            let distance = self.pos.distance2(station.pos());
+                            if distance < closest_distance {
+                                closest = station.index();
+                                closest_distance = distance;
+                            }
+                        }
+
+                        Some(ShipGoal::HarvestResources(closest))
+                    }
+                }
             },
             ShipBehavior::Trader => {
-                Some(ShipGoal::ArriveAt( {
-                    simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))).choose(&mut rand::thread_rng()).unwrap().index()
+                Some(ShipGoal::VisitStation( {
+                    simulation.planets_with_feature(
+                        Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))
+                    ).choose(&mut rand::thread_rng()).unwrap().index()
                 } ))
             },
             ShipBehavior::Pirate => {
@@ -65,20 +98,15 @@ impl Ship {
         };
     }
 
-    fn clear_objective(&mut self) {
-        self.goal = None;
-    }
-
     pub(crate) fn update(&mut self, simulation: &Simulation) {
         if let Some(goal) = &self.goal {
             match goal {
-                ShipGoal::ArriveAt(index) => {
+                ShipGoal::VisitStation(index) | ShipGoal::HarvestResources(index) | ShipGoal::DepositResources(index) => {
                     let goal_pos = simulation.planets[*index].pos();
     
                     let distance = self.pos.distance2(goal_pos);
 
                     if distance <= simulation.planets[*index].radius().powf(2f32) {
-                        self.clear_objective();
                         self.set_objective(simulation);
 
                         self.speed = self.initial_speed;
@@ -94,6 +122,7 @@ impl Ship {
 
                     self.speed *= 1.05f32;
                 }
+                _ => {}
             }
         }
     }
@@ -101,7 +130,10 @@ impl Ship {
 
 #[derive(Copy, Clone)]
 enum ShipGoal {
-    ArriveAt(usize)
+    VisitStation(usize),
+    HarvestResources(usize),
+    DepositResources(usize)
+
 }
 
 #[derive(Copy, Clone, strum_macros::EnumIter)]
