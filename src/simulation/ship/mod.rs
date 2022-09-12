@@ -60,7 +60,7 @@ impl Ship {
                     Some(ShipGoal::HarvestResources(index, progress)) => {
                         if progress == 0 {
                             let mut closest = 0;
-                            let mut closest_distance = 2f32;
+                            let mut closest_distance = std::f32::MAX;
                             for station in simulation.planets_with_feature(Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))) {
                                 let distance = self.pos.distance2(station.pos());
                                 if distance < closest_distance {
@@ -77,6 +77,16 @@ impl Ship {
                         }
                         
                     },
+                    Some(ShipGoal::VisitPlanet(index)) => {
+                        let goal_pos = simulation.planets[index].pos();
+    
+                        let distance = self.pos.distance2(goal_pos);
+                        if distance <= simulation.planets[index].radius().powf(2f32) {
+                            Some(ShipGoal::HarvestResources(index, 100))
+                        } else {
+                            Some(ShipGoal::VisitPlanet(index))
+                        }
+                    }
                     _ => {
                         let mut closest = 0;
                         let mut closest_distance = 2f32;
@@ -93,7 +103,7 @@ impl Ship {
                 }
             },
             ShipBehavior::Trader => {
-                Some(ShipGoal::VisitStation( {
+                Some(ShipGoal::VisitPlanet( {
                     simulation.planets_with_feature(
                         Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))
                     ).choose(&mut rand::thread_rng()).unwrap().index()
@@ -108,11 +118,10 @@ impl Ship {
     pub(crate) fn update(&mut self, simulation: &Simulation) {
         if let Some(goal) = &self.goal {
             match goal {
-                ShipGoal::VisitStation(index) | ShipGoal::DepositResources(index) => {
+                ShipGoal::VisitPlanet(index) | ShipGoal::DepositResources(index) => {
                     let goal_pos = simulation.planets[*index].pos();
     
                     let distance = self.pos.distance2(goal_pos);
-
                     if distance <= simulation.planets[*index].radius().powf(2f32) {
                         self.set_objective(simulation);
 
@@ -129,26 +138,10 @@ impl Ship {
 
                     self.speed *= 1.05f32;
                 },
-                ShipGoal::HarvestResources(index, progress) => {
-                    let goal_pos = simulation.planets[*index].pos();
-    
-                    let distance = self.pos.distance2(goal_pos);
+                ShipGoal::HarvestResources(index, ..) => {
+                    self.pos = simulation.planets[*index].pos();
 
-                    if progress == &100 {
-                        self.speed *= 1.05f32;
-                    }
-
-                    if distance <= simulation.planets[*index].radius().powf(2f32) {
-                        self.set_objective(simulation);
-                    }
-
-                    let dx = goal_pos.x - self.pos.x;
-                    let dy = goal_pos.y - self.pos.y;
-
-                    self.pos.x += dx * self.speed;
-                    self.pos.y += dy * self.speed;
-
-                    self.angle = Rad::atan2(dx, dy).0 + 3.14;
+                    self.set_objective(simulation);
                 }
             }
         }
@@ -157,10 +150,9 @@ impl Ship {
 
 #[derive(Copy, Clone)]
 enum ShipGoal {
-    VisitStation(usize),
+    VisitPlanet(usize),
     HarvestResources(usize, usize),
     DepositResources(usize)
-
 }
 
 #[derive(Copy, Clone, strum_macros::EnumIter)]

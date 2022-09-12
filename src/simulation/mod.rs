@@ -37,7 +37,7 @@ impl Default for Simulation {
         simulation.update();
 
         // TODO: Not all ships are rendered...
-        for _ in 0..300 {
+        for _ in 0..100 {
             simulation.ships.push(
                 ship::Ship::new(&simulation)
             );
