@@ -108,7 +108,7 @@ impl Ship {
     pub(crate) fn update(&mut self, simulation: &Simulation) {
         if let Some(goal) = &self.goal {
             match goal {
-                ShipGoal::VisitStation(index) | ShipGoal::DepositResources(index) | ShipGoal::HarvestResources(index, ..) => {
+                ShipGoal::VisitStation(index) | ShipGoal::DepositResources(index) => {
                     let goal_pos = simulation.planets[*index].pos();
     
                     let distance = self.pos.distance2(goal_pos);
@@ -129,6 +129,27 @@ impl Ship {
 
                     self.speed *= 1.05f32;
                 },
+                ShipGoal::HarvestResources(index, progress) => {
+                    let goal_pos = simulation.planets[*index].pos();
+    
+                    let distance = self.pos.distance2(goal_pos);
+
+                    if progress == &100 {
+                        self.speed *= 1.05f32;
+                    }
+
+                    if distance <= simulation.planets[*index].radius().powf(2f32) {
+                        self.set_objective(simulation);
+                    }
+
+                    let dx = goal_pos.x - self.pos.x;
+                    let dy = goal_pos.y - self.pos.y;
+
+                    self.pos.x += dx * self.speed;
+                    self.pos.y += dy * self.speed;
+
+                    self.angle = Rad::atan2(dx, dy).0 + 3.14;
+                }
             }
         }
     }

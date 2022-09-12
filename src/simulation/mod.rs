@@ -36,6 +36,7 @@ impl Default for Simulation {
         // Update once to put planets in position
         simulation.update();
 
+        // TODO: Not all ships are rendered...
         for _ in 0..50 {
             simulation.ships.push(
                 ship::Ship::new(&simulation)
@@ -69,16 +70,18 @@ impl Simulation {
             self.planets[planet_index].add_moon(moon_index);
             self.planets.push(planet::Planet::new(moon_index, moon_radius));
             self.planets[moon_index].add_orbit(planet_index, distance);
-            
-            if rand::thread_rng().gen_bool(0.4f64) {
-                self.planets[moon_index].add_feature(planet::PlanetaryFeature::Resources);
-            }
         }
 
         let planet_with_station = planet_index..self.planets.len();
         let planet_with_station = rand::thread_rng().gen_range(planet_with_station);
         self.planets[planet_with_station].add_feature(
             planet::PlanetaryFeature::Station
+        );
+
+        let planet_with_resources = planet_index..self.planets.len();
+        let planet_with_resources = rand::thread_rng().gen_range(planet_with_resources);
+        self.planets[planet_with_resources].add_feature(
+            planet::PlanetaryFeature::Resources
         );
 
         planet_index
