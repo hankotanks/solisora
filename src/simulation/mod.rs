@@ -72,17 +72,16 @@ impl Simulation {
             self.planets[moon_index].add_orbit(planet_index, distance);
         }
 
-        let planet_with_station = planet_index..self.planets.len();
-        let planet_with_station = rand::thread_rng().gen_range(planet_with_station);
-        self.planets[planet_with_station].add_feature(
-            planet::PlanetaryFeature::Station(0usize)
-        );
+        loop {
+            let planet_with_feature = planet_index..self.planets.len();
+            let planet_with_feature = rand::thread_rng().gen_range(planet_with_feature);
 
-        let planet_with_resources = planet_index..self.planets.len();
-        let planet_with_resources = rand::thread_rng().gen_range(planet_with_resources);
-        if self.planets[planet_with_resources].feature().is_none() {
-            self.planets[planet_with_resources].add_feature(
-                planet::PlanetaryFeature::Resources
+            if self.planets[planet_with_feature].feature().is_some() {
+                break;
+            }
+
+            self.planets[planet_with_feature].add_feature(
+                planet::PlanetaryFeature::random()
             );
         }
 
@@ -154,7 +153,7 @@ impl Simulation {
         } )
     }
 
-    pub(crate) fn closest_planet_with_feature(&self, pos: cgmath::Point2<f32>, filter: Option<Discriminant<PlanetaryFeature>>) -> usize {
+    pub(crate) fn closest_planet_with_feature(&self, pos: cgmath::Point2<f32>, filter: Option<Discriminant<PlanetaryFeature>>) -> Option<usize> {
         let mut closest = 0;
         let mut closest_distance = std::f32::MAX;
         for station in self.planets_with_feature(filter) {
@@ -165,6 +164,10 @@ impl Simulation {
             }
         }
 
-        closest
+        if closest == 0 {
+            None
+        } else {
+            Some(closest)
+        }
     }
 }

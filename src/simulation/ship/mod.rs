@@ -49,9 +49,19 @@ impl Ship {
             goal: None,
             behavior,
             pos: {
-                simulation.planets_with_feature(
+                match simulation.planets_with_feature(
                     Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
-                ).choose(&mut rand::thread_rng()).unwrap().pos()
+                ).choose(&mut rand::thread_rng()) {
+                    Some(planet) => {
+                        planet.pos()
+                    },
+                    None => {
+                        cgmath::Point2::new(
+                            rand::thread_rng().gen::<f32>() * 2f32 - 1f32,
+                            rand::thread_rng().gen::<f32>() * 2f32 - 1f32
+                        )
+                    }
+                }
             },
             speed,
             initial_speed: speed,
@@ -73,9 +83,10 @@ impl Ship {
                             Some(PlanetaryFeature::Station(resources)) => {
                                 simulation.planets[index].set_feature(PlanetaryFeature::Station(resources + 1));
                                 // find nearest resources
-                                Some(ShipGoal::VisitPlanet(
-                                    simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources)))
-                                ))
+                                match simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources))) {
+                                    Some(index) => Some(ShipGoal::VisitPlanet(index)),
+                                    None => None
+                                }
                             },
                             Some(PlanetaryFeature::Resources) => {
                                 // wait at asteroid
@@ -85,23 +96,28 @@ impl Ship {
                         }
                     },
                     Some(ShipGoal::Wait(..)) => {
-                        Some(ShipGoal::VisitPlanet(
-                            simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Station(0usize))))
-                        ))
+                        match simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Station(0usize)))) {
+                            Some(index) => Some(ShipGoal::VisitPlanet(index)),
+                            None => None
+                        }
                     },
                     None => {
-                        Some(ShipGoal::VisitPlanet(
-                            simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources)))
-                        ))
+                        match simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources))) {
+                            Some(index) => Some(ShipGoal::VisitPlanet(index)),
+                            None => None
+                        }
                     }
                 }                
             },
             ShipBehavior::Trader => {
-                Some(ShipGoal::VisitPlanet( {
-                    simulation.planets_with_feature(
-                        Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
-                    ).choose(&mut rand::thread_rng()).unwrap().index()
-                } ))
+                match simulation.planets_with_feature(
+                    Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
+                ).choose(&mut rand::thread_rng()) {
+                    Some(planet) => {
+                        Some(ShipGoal::VisitPlanet(planet.index()))
+                    },
+                    None => None
+                }
             },
             ShipBehavior::Pirate => {
                 None

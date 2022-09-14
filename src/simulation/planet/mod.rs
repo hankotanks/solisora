@@ -1,6 +1,8 @@
 mod orbit;
 
 use cgmath::Point2;
+use rand::seq::IteratorRandom;
+use strum::IntoEnumIterator;
 
 use super::Simulation;
 
@@ -122,8 +124,14 @@ impl Planet {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, strum_macros::EnumIter)]
 pub(crate) enum PlanetaryFeature {
     Station(usize),
     Resources
+}
+
+impl PlanetaryFeature {
+    pub(crate) fn random() -> Self {
+        Self::iter().choose(&mut rand::thread_rng()).unwrap()
+    }
 }
