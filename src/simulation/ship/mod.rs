@@ -22,6 +22,10 @@ impl Ship {
         self.pos
     }
 
+    pub(crate) fn set_pos(&mut self, p: cgmath::Point2<f32>) {
+        self.pos = p;
+    }
+
     pub(crate) fn angle(&self) -> f32 {
         self.angle
     }
@@ -32,14 +36,21 @@ impl Ship {
 }
 
 impl Ship {
-    pub(crate) fn new(simulation: &Simulation) -> Self {
+    pub(crate) fn new(simulation: &mut Simulation) -> Self {
+        Self::with_behavior(
+            simulation, 
+            ShipBehavior::iter().choose(&mut rand::thread_rng()).unwrap()
+        )
+    }
+
+    pub(crate) fn with_behavior(simulation: &mut Simulation, behavior: ShipBehavior) -> Self {
         let speed = rand::thread_rng().gen::<f32>() * 0.01f32;
         let mut ship = Self {
             goal: None,
-            behavior: ShipBehavior::iter().choose(&mut rand::thread_rng()).unwrap(),
+            behavior,
             pos: {
                 simulation.planets_with_feature(
-                    Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))
+                    Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
                 ).choose(&mut rand::thread_rng()).unwrap().pos()
             },
             speed,
@@ -53,13 +64,14 @@ impl Ship {
 }
 
 impl Ship {
-    fn set_objective(&mut self, simulation: &Simulation) {
+    fn set_objective(&mut self, simulation: &mut Simulation) {
         self.goal = match self.behavior {
             ShipBehavior::Miner => {
                 match self.goal {
                     Some(ShipGoal::VisitPlanet(index)) => {
                         match simulation.planets[index].feature() {
-                            Some(PlanetaryFeature::Station) => {
+                            Some(PlanetaryFeature::Station(resources)) => {
+                                simulation.planets[index].set_feature(PlanetaryFeature::Station(resources + 1));
                                 // find nearest resources
                                 Some(ShipGoal::VisitPlanet(
                                     simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Resources)))
@@ -74,7 +86,7 @@ impl Ship {
                     },
                     Some(ShipGoal::Wait(..)) => {
                         Some(ShipGoal::VisitPlanet(
-                            simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Station)))
+                            simulation.closest_planet_with_feature(self.pos, Some(std::mem::discriminant(&PlanetaryFeature::Station(0usize))))
                         ))
                     },
                     None => {
@@ -87,7 +99,7 @@ impl Ship {
             ShipBehavior::Trader => {
                 Some(ShipGoal::VisitPlanet( {
                     simulation.planets_with_feature(
-                        Some(std::mem::discriminant(&planet::PlanetaryFeature::Station))
+                        Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
                     ).choose(&mut rand::thread_rng()).unwrap().index()
                 } ))
             },
@@ -97,7 +109,7 @@ impl Ship {
         };
     }
 
-    pub(crate) fn update(&mut self, simulation: &Simulation) {
+    pub(crate) fn update(&mut self, simulation: &mut Simulation) {
         if let Some(goal) = &self.goal {
             match goal {
                 ShipGoal::VisitPlanet(index) => {

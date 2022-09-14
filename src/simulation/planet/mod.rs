@@ -34,6 +34,10 @@ impl Planet {
         self.feature.as_ref().cloned()
     }
 
+    pub(crate) fn set_feature(&mut self, f: PlanetaryFeature) {
+        self.feature = Some(f);
+    }
+
     pub(crate) fn parent(&self) -> Option<usize> {
         if self.orbit.is_some() {
             return Some(self.orbit.unwrap().parent());
@@ -120,6 +124,6 @@ impl Planet {
 
 #[derive(Clone)]
 pub(crate) enum PlanetaryFeature {
-    Station,
+    Station(usize),
     Resources
 }

@@ -39,9 +39,8 @@ impl Default for Simulation {
 
         // TODO: Not all ships are rendered...
         for _ in 0..100 {
-            simulation.ships.push(
-                ship::Ship::new(&simulation)
-            );
+            let ship = ship::Ship::new(&mut simulation);
+            simulation.ships.push(ship);
         }
 
         simulation
@@ -76,7 +75,7 @@ impl Simulation {
         let planet_with_station = planet_index..self.planets.len();
         let planet_with_station = rand::thread_rng().gen_range(planet_with_station);
         self.planets[planet_with_station].add_feature(
-            planet::PlanetaryFeature::Station
+            planet::PlanetaryFeature::Station(0usize)
         );
 
         let planet_with_resources = planet_index..self.planets.len();
@@ -93,11 +92,26 @@ impl Simulation {
     pub(crate) fn update(&mut self) {
         self.update_planet_position(0);
 
-        for entity_index in (0..self.ships.len()).rev() {
-            let mut entity = self.ships.remove(entity_index);
-            entity.update(&self);
+        // update stations
+        for planet in 0..self.planets.len() {
+            if let Some(PlanetaryFeature::Station(resources)) = self.planets[planet].feature() {
+                if resources > 10 {
+                    self.planets[planet].add_feature(PlanetaryFeature::Station(0usize));
+                    let mut ship = ship::Ship::with_behavior(self, ship::ShipBehavior::Trader);
+                    ship.set_pos(self.planets[planet].pos());
+                    self.ships.push(
+                        ship
+                    );
+                }
+            }
+        }
 
-            self.ships.push(entity);
+        // update ships
+        for ship in (0..self.ships.len()).rev() {
+            let mut ship  = self.ships.remove(ship);
+            ship.update(self);
+
+            self.ships.push(ship);
         }
     }
 
