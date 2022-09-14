@@ -171,6 +171,6 @@ enum ShipGoal {
 #[derive(Copy, Clone, strum_macros::EnumIter)]
 pub(crate) enum ShipBehavior {
     Miner,
-    Trader,
+    Trader, // TODO: Trading ships carry resources between stations
     Pirate
 }

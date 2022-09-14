@@ -56,9 +56,9 @@ impl Simulation {
         );
 
         let planet_index = self.planets.len();
-
         self.planets.push(planet::Planet::new(planet_index, planet_radius));
 
+        // Add moons
         while rand::thread_rng().gen_bool(0.5f64) {
             let moon_radius = (planet_radius * 0.1f32)..(planet_radius * 0.5f32);
             let moon_radius = rand::thread_rng().gen_range(moon_radius).max(planet::Planet::SUN_RADIUS * 0.05f32);
@@ -72,6 +72,7 @@ impl Simulation {
             self.planets[moon_index].add_orbit(planet_index, distance);
         }
 
+        // Add PlanetaryFeatures to this system
         loop {
             let planet_with_feature = planet_index..self.planets.len();
             let planet_with_feature = rand::thread_rng().gen_range(planet_with_feature);
