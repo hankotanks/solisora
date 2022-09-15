@@ -89,7 +89,6 @@ impl Ship {
                                 }
                             },
                             Some(PlanetaryFeature::Resources) => {
-                                // wait at asteroid
                                 Some(ShipGoal::Wait(index, 100))
                             },
                             _ => panic!()
@@ -106,18 +105,77 @@ impl Ship {
                             Some(index) => Some(ShipGoal::VisitPlanet(index)),
                             None => None
                         }
-                    }
+                    },
+                    _ => panic!()
                 }                
             },
             ShipBehavior::Trader => {
-                match simulation.planets_with_feature(
-                    Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
-                ).choose(&mut rand::thread_rng()) {
-                    Some(planet) => {
-                        Some(ShipGoal::VisitPlanet(planet.index()))
-                    },
-                    None => None
+                let mut current_resources = 0usize;
+                if let Some(ShipGoal::VisitPlanet(current_planet)) | Some(ShipGoal::VisitPlanetWithResources(current_planet)) = self.goal {
+                    if let Some(PlanetaryFeature::Station(resources)) = simulation.planets[current_planet].feature() {
+                        current_resources = resources;
+                    }
                 }
+
+                 match self.goal {
+                    Some(ShipGoal::VisitPlanet(current_planet)) => {
+                        match simulation.planets_with_feature(
+                            Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
+                        ).filter(|planet| {
+                            if let Some(PlanetaryFeature::Station(r)) = planet.feature() {
+                                return r < current_resources;
+                            }
+                            
+                            panic!()
+                        } ).choose(&mut rand::thread_rng()) {
+                            Some(target_planet) => {
+                                let target_index = target_planet.index();
+
+                                simulation.planets[current_planet].set_feature(
+                                    PlanetaryFeature::Station(current_resources - 1usize)
+                                );
+                                
+                                Some(ShipGoal::VisitPlanetWithResources(target_index))
+                            },
+                            None => {
+                                None
+                            }
+                        }
+                    },
+                    Some(ShipGoal::VisitPlanetWithResources(current_planet)) => {
+                        simulation.planets[current_planet].set_feature(
+                            PlanetaryFeature::Station(current_resources + 1usize)
+                        );
+
+                        match simulation.planets_with_feature(
+                            Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
+                        ).filter(|planet| {
+                            if let Some(PlanetaryFeature::Station(r)) = planet.feature() {
+                                return r > current_resources;
+                            }
+                            
+                            panic!()
+                        } ).choose(&mut rand::thread_rng()) {
+                            Some(target_planet) => {
+                                Some(ShipGoal::VisitPlanet(target_planet.index()))
+                            },
+                            None => {
+                                None
+                            }
+                        }
+                    },
+                    None => {
+                        match simulation.planets_with_feature(
+                            Some(std::mem::discriminant(&planet::PlanetaryFeature::Station(0usize)))
+                        ).choose(&mut rand::thread_rng()) {
+                            Some(target) => {
+                                Some(ShipGoal::VisitPlanet(target.index()))
+                            },
+                            None => None
+                        }
+                    },
+                    _ => panic!()
+                 }
             },
             ShipBehavior::Pirate => {
                 None
@@ -128,7 +186,7 @@ impl Ship {
     pub(crate) fn update(&mut self, simulation: &mut Simulation) {
         if let Some(goal) = &self.goal {
             match goal {
-                ShipGoal::VisitPlanet(index) => {
+                ShipGoal::VisitPlanet(index) | ShipGoal::VisitPlanetWithResources(index) => {
                     let goal_pos = simulation.planets[*index].pos();
     
                     let distance = self.pos.distance2(goal_pos);
@@ -158,6 +216,8 @@ impl Ship {
                     }
                 }
             }
+        } else {
+            self.set_objective(simulation);
         }
     }
 }
@@ -165,12 +225,13 @@ impl Ship {
 #[derive(Copy, Clone)]
 enum ShipGoal {
     VisitPlanet(usize),
+    VisitPlanetWithResources(usize),
     Wait(usize, usize)
 }
 
 #[derive(Copy, Clone, strum_macros::EnumIter)]
 pub(crate) enum ShipBehavior {
     Miner,
-    Trader, // TODO: Trading ships carry resources between stations
+    Trader,
     Pirate
 }
