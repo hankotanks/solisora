@@ -13,8 +13,7 @@ use super::mesh;
 pub(super) struct Camera {
     pub(super) pos: Point2<f32>,
     zoom: f32,
-    aspect: f32,
-    following: Option<usize>
+    aspect: f32
 }
 
 impl Camera {
@@ -33,24 +32,12 @@ impl Camera {
         Self {
             pos: Point2::new(0.0f32, 0.0f32),
             zoom: 1f32,
-            aspect,
-            following: None
+            aspect
         }
     }
 
     pub(super) fn pan(&mut self, pos: Point2<f32>) {
-        // only allow panning if the camera isn't tracking a planet
-        if self.following.is_none() {
-            self.pos = pos;
-        }
-    }
-
-    pub(super) fn pan_to_target(&mut self, mesh: &mesh::Mesh) {
-        if let Some(target_index) = self.following {
-            if let Some(point) =  mesh.origin(target_index) {
-                self.pos = point;
-            }
-        }
+        self.pos = pos;
     }
 
     pub(super) fn zoom(&mut self, delta: f32) {
@@ -96,7 +83,8 @@ pub(super) struct CameraController {
     mouse_position: Option<winit::dpi::PhysicalPosition<f64>>,
     mouse_position_offset: Point2<f32>,
     size: PhysicalSize<u32>,
-    toggle: bool
+    following: usize,
+    toggle_mouse_drag: bool
 }
 
 impl CameraController {
@@ -105,7 +93,8 @@ impl CameraController {
             mouse_position: None,
             mouse_position_offset: (0f32, 0f32).into(),
             size: *size,
-            toggle: false
+            following: 0,
+            toggle_mouse_drag: false
         }
     }
 
@@ -132,7 +121,7 @@ impl CameraController {
                 ..
             } => {
                 // When the user starts to drag
-                self.toggle = true;
+                self.toggle_mouse_drag = true;
 
                 self.mouse_position_offset = self.physical_position_to_clip_space();
                 self.mouse_position_offset.x += camera.pos.x;
@@ -144,12 +133,12 @@ impl CameraController {
                 ..
             } => {
                 // Releasing the drag
-                self.toggle = false;
+                self.toggle_mouse_drag = false;
             },
             _ => {  }
         }
 
-        if self.toggle {
+        if self.toggle_mouse_drag && self.following == 0 {
             camera.pan(
                 {
                     let mut p = self.physical_position_to_clip_space();
@@ -167,6 +156,14 @@ impl CameraController {
         self.size = *size;
     }
 
+    pub(super) fn handle_tracking(&mut self, camera: &mut Camera, mesh: &mesh::Mesh) {
+        if self.following != 0 {
+            if let Some(point) = mesh.origin(self.following) {
+                camera.pan(point);
+            }
+        }
+    }
+
     fn physical_position_to_clip_space(&self) -> Point2<f32> {
         if let Some(pos) = self.mouse_position {
             return Point2::new(
@@ -174,7 +171,7 @@ impl CameraController {
                 (pos.y as f32 / self.size.height as f32) * 2f32 - 1f32
             );
         }
-            
+        
         panic!()
     }
 }
