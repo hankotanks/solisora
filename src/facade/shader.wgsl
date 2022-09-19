@@ -27,6 +27,6 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let d = ((1.0 - pow(min(in.distance, 0.5) / 1.0, 0.1)) * 2.0);
+    let d = ((1.0 - pow(min(in.distance, 1.0), 0.05)) * 4.0);
     return vec4<f32>(in.color, 1.0) * d;
 }

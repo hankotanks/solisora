@@ -5,7 +5,7 @@ use cgmath::{
     SquareMatrix
 };
 
-use winit::event;
+use winit::event::{self, VirtualKeyCode};
 use winit::dpi::PhysicalSize;
 
 use super::mesh;
@@ -98,7 +98,9 @@ impl CameraController {
         }
     }
 
-    pub(super) fn handle_mouse_events(&mut self, camera: &mut Camera, event: &event::WindowEvent) {
+    pub(super) fn handle_camera_events(&mut self, camera: &mut Camera, event: &event::WindowEvent) -> bool {
+        let mut processed = true;
+
         use event::WindowEvent::*;
         match event {
             MouseWheel { 
@@ -109,7 +111,7 @@ impl CameraController {
                 // Zoom controls on MouseWheel
                 line_delta *= -0.1f32;
 
-                camera.zoom(line_delta);                            
+                camera.zoom(line_delta);   
             },
             CursorMoved { position, .. } => {
                 // Update PhysicalPosition of the cursor within the window
@@ -135,7 +137,29 @@ impl CameraController {
                 // Releasing the drag
                 self.toggle_mouse_drag = false;
             },
-            _ => {  }
+            KeyboardInput {
+                input: event::KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Up),
+                    ..
+                },
+                ..
+            } => {
+                self.following += 1;
+            },
+            KeyboardInput {
+                input: event::KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Down),
+                    ..
+                },
+                ..
+            } => {
+                if self.following > 0 {
+                    self.following -= 1;
+                }
+            }
+            _ => {
+                processed = false;
+            }
         }
 
         if self.toggle_mouse_drag && self.following == 0 {
@@ -150,6 +174,8 @@ impl CameraController {
                 }
             );
         }
+
+        processed
     }
 
     pub(super) fn handle_resize(&mut self, size: &PhysicalSize<u32>) {

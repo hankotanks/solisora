@@ -223,13 +223,8 @@ impl State {
 
     pub(super) fn input(&mut self, event: &WindowEvent) -> bool {
         // All mouse events are related to camera control
-        match event {
-            WindowEvent::MouseWheel { .. } | 
-            WindowEvent::MouseInput { .. } | 
-            WindowEvent::CursorMoved { .. } => { 
-                self.camera_controller.handle_mouse_events(&mut self.camera, event) 
-            },
-            _ => {}
+        if self.camera_controller.handle_camera_events(&mut self.camera, event) {
+            return true;
         }
 
         false
