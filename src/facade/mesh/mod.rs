@@ -8,7 +8,7 @@ use self::meshable::Meshable;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct Vertex {
     pub(super) position: [f32; 3],
-    pub(super) color: [f32; 3],
+    pub(super) color: [f32; 3]
 }
 
 impl Vertex {
@@ -40,6 +40,7 @@ impl Mesh {
         };
 
         mesh.handle_simulation_update(simulation);
+
         let mut offset = 0u16;
         for (index, planet) in simulation.planets().enumerate() {
             mesh.indices.append(
@@ -47,9 +48,10 @@ impl Mesh {
                     f + offset
                 } ).collect::<Vec<u16>>()
             );
-            mesh.count += planet.indices().len() as u32;
 
             offset += mesh.vertices[index].len() as u16;
+
+            mesh.count += planet.indices().len() as u32;
         }
 
         for (index, ship) in simulation.ships().enumerate() {
@@ -58,9 +60,10 @@ impl Mesh {
                     f + offset
                 } ).collect::<Vec<u16>>()
             );
-            mesh.count += ship.indices().len() as u32;
 
             offset += mesh.vertices[index].len() as u16;
+
+            mesh.count += ship.indices().len() as u32;
         }
 
         mesh

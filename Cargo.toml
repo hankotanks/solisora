@@ -15,8 +15,9 @@ bytemuck = { version = "1.4", features = [ "derive" ] }
 rand = "0.8.5"
 rand_seeder = "0.2.3"
 cgmath = "0.18"
-strum = "*"
-strum_macros = "*"
+strum = "0.24.1"
+strum_macros = "0.24.3"
+rayon = "1.5.3"
 
 [[bin]]
 name = "solisora"
