@@ -32,6 +32,17 @@ pub(super) struct Mesh {
 }
 
 impl Mesh {
+    pub(super) fn origin(&self, index: usize) -> Option<cgmath::Point2<f32>> {
+        match self.vertices[index].first() {
+            Some(origin) => Some(
+                cgmath::Point2::new(origin.position[0], origin.position[1])
+            ),
+            None => None
+        }
+    }
+}
+
+impl Mesh {
     pub(super) fn new(simulation: &crate::simulation::Simulation) -> Self {
         let mut mesh = Self {
             vertices: Vec::new(),

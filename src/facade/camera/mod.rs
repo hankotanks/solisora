@@ -8,10 +8,13 @@ use cgmath::{
 use winit::event;
 use winit::dpi::PhysicalSize;
 
+use super::mesh;
+
 pub(super) struct Camera {
     pub(super) pos: Point2<f32>,
     zoom: f32,
-    aspect: f32
+    aspect: f32,
+    following: Option<usize>
 }
 
 impl Camera {
@@ -30,12 +33,24 @@ impl Camera {
         Self {
             pos: Point2::new(0.0f32, 0.0f32),
             zoom: 1f32,
-            aspect
+            aspect,
+            following: None
         }
     }
 
     pub(super) fn pan(&mut self, pos: Point2<f32>) {
-        self.pos = pos;
+        // only allow panning if the camera isn't tracking a planet
+        if self.following.is_none() {
+            self.pos = pos;
+        }
+    }
+
+    pub(super) fn pan_to_target(&mut self, mesh: &mesh::Mesh) {
+        if let Some(target_index) = self.following {
+            if let Some(point) =  mesh.origin(target_index) {
+                self.pos = point;
+            }
+        }
     }
 
     pub(super) fn zoom(&mut self, delta: f32) {

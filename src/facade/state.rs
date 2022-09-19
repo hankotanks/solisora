@@ -241,6 +241,7 @@ impl State {
 
         self.index_count = mesh.count();
 
+        self.camera.pan_to_target(mesh);
         self.camera_uniform.update_projection(&self.camera);
         self.queue.write_buffer(
             &self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform])
