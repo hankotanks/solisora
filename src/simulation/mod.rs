@@ -107,11 +107,10 @@ impl Simulation {
         }
 
         // update ships
-        for ship in (0..self.ships.len()).rev() {
-            let mut ship  = self.ships.remove(ship);
+        for ship_index in (0..self.ships.len()) {
+            let mut ship = self.ships[ship_index].clone();
             ship.update(self);
-
-            self.ships.push(ship);
+            self.ships[ship_index] = ship;
         }
     }
 

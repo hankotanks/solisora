@@ -2,6 +2,8 @@ mod mesh;
 mod camera;
 mod state;
 
+use std::time::{Duration, Instant};
+
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -81,7 +83,9 @@ pub(crate) async fn run(mut simulation: crate::simulation::Simulation) {
                     _ => {}
                 }
             },
-            _ => {}
+            _ => {
+                *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(10));
+            }
         }
     });
 }
