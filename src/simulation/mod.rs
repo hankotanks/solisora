@@ -107,7 +107,7 @@ impl Simulation {
         }
 
         // update ships
-        for ship_index in (0..self.ships.len()) {
+        for ship_index in 0..self.ships.len() {
             let mut ship = self.ships[ship_index].clone();
             ship.update(self);
             self.ships[ship_index] = ship;
