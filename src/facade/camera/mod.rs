@@ -83,7 +83,7 @@ pub(super) struct CameraController {
     mouse_position: Option<winit::dpi::PhysicalPosition<f64>>,
     mouse_position_offset: Point2<f32>,
     size: PhysicalSize<u32>,
-    following: usize,
+    following: isize,
     toggle_mouse_drag: bool
 }
 
@@ -153,9 +153,7 @@ impl CameraController {
                 },
                 ..
             } => {
-                if self.following > 0 {
-                    self.following -= 1;
-                }
+                self.following -= 1;
             }
             _ => {
                 processed = false;

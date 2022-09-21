@@ -28,11 +28,18 @@ impl Vertex {
 pub(super) struct Mesh {
     vertices: Vec<Vec<Vertex>>,
     indices: Vec<u16>,
-    count: u32
+    count: u32,
+    planet_count: usize,
+    ship_count: usize
 }
 
 impl Mesh {
-    pub(super) fn origin(&self, index: usize) -> Option<cgmath::Point2<f32>> {
+    pub(super) fn origin(&self, index: isize) -> Option<cgmath::Point2<f32>> {
+        let mut index = (index as usize) % self.ship_count;
+        if index != 0 {
+            index += self.planet_count - 2;
+        }
+
         match self.vertices[index].first() {
             Some(origin) => Some(
                 cgmath::Point2::new(origin.position[0], origin.position[1])
@@ -47,7 +54,9 @@ impl Mesh {
         let mut mesh = Self {
             vertices: Vec::new(),
             indices: Vec::new(),
-            count: 0u32
+            count: 0u32,
+            planet_count: simulation.planets().count(),
+            ship_count: simulation.ships().count()
         };
 
         mesh.handle_simulation_update(simulation);
