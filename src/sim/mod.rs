@@ -1,173 +1,175 @@
-pub(crate) mod planet;
-pub(crate) mod ship;
+pub mod ship;
+pub mod planet;
 
-use std::mem::Discriminant;
+use std::f32::consts::TAU;
+use std::ops::Range;
+use strum::IntoEnumIterator;
 
-use cgmath::MetricSpace;
-use rand::Rng;
+use rand::{
+    Rng, 
+    SeedableRng, 
+    seq::IteratorRandom, 
+    rngs::StdRng
+};
 
-use self::planet::PlanetaryFeature;
+use cgmath::{
+    Point2, 
+    MetricSpace
+};
 
-pub(crate) struct Simulation {
-    planets: Vec<planet::Planet>,
-    ships: Vec<ship::Ship>
+use ship::Ship;
+use planet::{
+    Planet,
+    Orbit,
+    PlanetFeature
+};
+
+pub struct Sim {
+    pub system: Vec<Planet>,
+    pub ships: Vec<Ship>
 }
 
-impl Default for Simulation {
+#[derive(Clone)]
+pub struct SimConfig {
+    system_rad: f32,
+    system_seed: Option<u64>,
+    sun_rad: f32,
+    pl_size_multiplier: Range<f32>,
+    pl_moon_prob: f64,
+    pl_feat_prob: f64
+}
+
+impl Default for SimConfig {
     fn default() -> Self {
-        let mut simulation = Self { 
-            planets: vec![planet::Planet::default()],
-            ships: Vec::new()
+        Self {
+            system_rad: 1.0,
+            system_seed: None,
+            sun_rad: 0.1,
+            pl_size_multiplier: 0.1..0.3,
+            pl_moon_prob: 0.5,
+            pl_feat_prob: 0.5
+        }
+    }
+}
+
+impl Default for Sim {
+    fn default() -> Self {
+        let config = SimConfig::default();
+        Self::new(config)
+    }
+}
+
+impl Sim {
+    pub fn new(config: SimConfig) -> Self {
+        fn total_rad(system: &Vec<Planet>, pl_index: usize) -> f32 {
+            let mut pl_rad = system[pl_index].rad;
+            for &moon_index in system[pl_index].moon_indices.iter() {
+                let dist = system[moon_index].orbit.as_ref().unwrap().dist;
+                let dist = dist + total_rad(system, moon_index);
+                pl_rad = pl_rad.max(dist);
+            }
+            
+            pl_rad
+        }
+
+        let mut prng = match config.system_seed {
+            Some(s) => SeedableRng::seed_from_u64(s),
+            None => StdRng::from_entropy()
         };
         
-        loop {
-            let planet_index = simulation.add();
-            let planet_radius = simulation.planets[planet_index].get_orbital_radius(&simulation);
+        Self {
+            system: {
+                let mut system = vec![
+                    Planet::new(config.sun_rad)
+                ];
 
-            let system_radius = simulation.planets[0].get_orbital_radius(&simulation);
-            if system_radius + planet_radius > 1f32 {
-                simulation.planets.truncate(planet_index);
-                break;
-            }
+                loop {
+                    let pl_index = system.len();
+                    let pl_rad = config.sun_rad * prng.gen_range(config.pl_size_multiplier.clone());
+                    system.push(Planet::new(pl_rad));
 
-            simulation.planets[0].add_moon(planet_index);
-            simulation.planets[planet_index].add_orbit(0, system_radius + planet_radius);
-        }
+                    while { 
+                        let rad = total_rad(&system, pl_index);
+                        let padding = system[pl_index].rad * 5f32;
+                        rad < padding && prng.gen_bool(config.pl_moon_prob) 
+                    } {
+                        let moon_rad = prng.gen_range(config.pl_size_multiplier.clone());
+                        let moon_rad = moon_rad * system[pl_index].rad;
+                        let moon_index = system.len();
 
-        // Update once to put planets in position
-        simulation.update();
+                        let dist = total_rad(&system, pl_index);
+                        let dist = dist + system[pl_index].rad + moon_rad * 3f32;
 
-        // TODO: Not all ships are rendered...
-        for _ in 0..100 {
-            let ship = ship::Ship::new(&mut simulation);
-            simulation.ships.push(ship);
-        }
+                        system[pl_index].moon_indices.push(moon_index);
+                        system.push(Planet::new(moon_rad));
+                        system[moon_index].orbit = Some(Orbit::new(pl_index, dist));
+                    }
 
-        simulation
-    }
-}
+                    for pl in system.iter_mut() {
+                        if prng.gen_bool(config.pl_feat_prob) {
+                            pl.feat = Some(PlanetFeature::iter().choose(&mut prng).unwrap());
+                        }
+                    }
 
-impl Simulation {
-    // Adds a new planet system (without an orbit) and returns the index of the planet
-    fn add(&mut self) -> usize {
-        let planet_radius = self.planets[0].radius();
-        let planet_radius = rand::thread_rng().gen_range(
-            (planet_radius * 0.1f32)..(planet_radius * 0.5f32)
-        );
+                    let pl_system_rad = total_rad(&system, pl_index);
+                    let pl_system_rad = pl_system_rad + system[pl_index].rad * 3f32;
 
-        let planet_index = self.planets.len();
-        self.planets.push(planet::Planet::new(planet_index, planet_radius));
+                    let system_rad = total_rad(&system, 0);
+                    if system_rad + pl_system_rad > config.system_rad {
+                        system.truncate(pl_index);
+                        break;
+                    }
 
-        // Add moons
-        while rand::thread_rng().gen_bool(0.5f64) {
-            let moon_radius = (planet_radius * 0.1f32)..(planet_radius * 0.5f32);
-            let moon_radius = rand::thread_rng().gen_range(moon_radius).max(planet::Planet::SUN_RADIUS * 0.05f32);
-
-            let distance = self.planets[planet_index].get_orbital_radius(self);
-            let distance = distance + moon_radius * 3f32;
-
-            let moon_index = self.planets.len();
-            self.planets[planet_index].add_moon(moon_index);
-            self.planets.push(planet::Planet::new(moon_index, moon_radius));
-            self.planets[moon_index].add_orbit(planet_index, distance);
-        }
-
-        // Add PlanetaryFeatures to this system
-        loop {
-            let planet_with_feature = planet_index..self.planets.len();
-            let planet_with_feature = rand::thread_rng().gen_range(planet_with_feature);
-
-            if self.planets[planet_with_feature].feature().is_some() {
-                break;
-            }
-
-            self.planets[planet_with_feature].add_feature(
-                planet::PlanetaryFeature::random()
-            );
-        }
-
-        planet_index
-    }
-
-    pub(crate) fn update(&mut self) {
-        self.update_planet_position(0);
-
-        // update stations
-        for planet in 0..self.planets.len() {
-            if let Some(PlanetaryFeature::Station(resources)) = self.planets[planet].feature() {
-                if resources > 10 {
-                    self.planets[planet].add_feature(PlanetaryFeature::Station(0usize));
-                    let mut ship = ship::Ship::with_behavior(self, ship::ShipBehavior::Trader);
-                    ship.set_pos(self.planets[planet].pos());
-                    self.ships.push(
-                        ship
+                    system[0].moon_indices.push(pl_index);
+                    system[pl_index].orbit = Some(
+                        Orbit::new(0, system_rad + pl_system_rad)
                     );
                 }
+
+                system
+            },
+            ships: {
+                Vec::new()
             }
         }
-
-        // update ships
-        for ship_index in 0..self.ships.len() {
-            let mut ship = self.ships[ship_index].clone();
-            ship.update(self);
-            self.ships[ship_index] = ship;
-        }
     }
 
-    fn update_planet_position(&mut self, index: usize) {
-        if let Some(parent_index) = self.planets[index].parent() {
-            let parent_pos = self.planets[parent_index].pos();
-            let parent_radius = self.planets[parent_index].radius();
-
-            self.planets[index].update_pos(parent_pos, parent_radius);
-        }
-
-        let moon_indices = self.planets[index].moon_indices().copied().collect::<Vec<usize>>();
-        for moon_index in moon_indices {
-            self.update_planet_position(moon_index);
-        }
-    }
-    
-}
-
-impl Simulation {
-    pub(crate) fn planets(&self) -> impl Iterator<Item = &planet::Planet> {
-        self.planets.iter()
+    pub fn update(&mut self) {
+        self.update_planet(0);
     }
 
-    pub(crate) fn ships(&self) -> impl Iterator<Item = &ship::Ship> {
-        self.ships.iter()
-    }
+    pub fn update_planet(&mut self, pl_index: usize) {
+        if let Some(mut pl_orbit) = self.system[pl_index].orbit {
+            let parent_pos = self.system[pl_orbit.parent_index].pos;
+            let parent_rad = self.system[pl_orbit.parent_index].rad;
 
-    pub(crate) fn planets_with_feature(&self, filter: Option<Discriminant<PlanetaryFeature>>) -> impl Iterator<Item = &planet::Planet> {
-        self.planets.iter().filter(move |planet| {
-            match planet.feature() {
-                Some(feature) => {
-                    match filter {
-                        Some(d) => std::mem::discriminant(&feature) == d,
-                        None => false
-                    }
-                },
-                None => filter.is_none()
-            }
-        } )
-    }
+            let mut offset = 0.0174f32;
+            offset *= pl_orbit.speed;
+            offset *= self.system[0].rad / parent_rad;
+            offset *= if pl_orbit.ccw { -1f32 } else { 1f32 };
 
-    pub(crate) fn closest_planet_with_feature(&self, pos: cgmath::Point2<f32>, filter: Option<Discriminant<PlanetaryFeature>>) -> Option<usize> {
-        let mut closest = 0;
-        let mut closest_distance = std::f32::MAX;
-        for station in self.planets_with_feature(filter) {
-            let distance = pos.distance2(station.pos());
-            if distance < closest_distance {
-                closest = station.index();
-                closest_distance = distance;
-            }
+            let d = {
+                let angle = (pl_orbit.angle + offset) % TAU;
+                Point2::new(
+                    parent_pos.x + pl_orbit.dist * angle.cos(),
+                    parent_pos.y + pl_orbit.dist * angle.sin()
+                ).distance((0f32, 0f32).into())
+            };
+            
+            offset *= 1f32 - (d / 2f32.sqrt());
+
+            pl_orbit.angle += offset;
+            pl_orbit.angle %= TAU;
+
+            self.system[pl_index].pos = Point2::new(
+                parent_pos.x + pl_orbit.dist * pl_orbit.angle.cos(),
+                parent_pos.y + pl_orbit.dist * pl_orbit.angle.sin()
+            );
+            self.system[pl_index].orbit = Some(pl_orbit);
         }
 
-        if closest == 0 {
-            None
-        } else {
-            Some(closest)
+        for m in self.system[pl_index].moon_indices.clone().drain(0..) {
+            self.update_planet(m);
         }
     }
 }
