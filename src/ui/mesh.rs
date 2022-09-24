@@ -111,7 +111,7 @@ impl Mesh {
             vertices: {
                 let color = match ship.ship_type {
                     ShipType::Miner => [1f32, 0.4f32, 0f32],
-                    ShipType::Trader => [0f32, 0.6f32, 1f32]
+                    ShipType::Trader { .. } => [0f32, 0.6f32, 1f32]
                 };
         
                 let min = ship.angle - 0.2617994;

@@ -1,4 +1,5 @@
 use rand::Rng;
+use strum::EnumIter;
 
 pub struct Ship {
     pub pos: cgmath::Point2<f32>,
@@ -10,7 +11,7 @@ pub struct Ship {
 }
 
 impl Ship {
-    fn new(ship_type: ShipType) -> Self {
+    pub fn new(ship_type: ShipType) -> Self {
         let mut prng = rand::thread_rng();
         let speed = prng.gen::<f32>() * 0.01f32;
         Self {
@@ -18,18 +19,20 @@ impl Ship {
             speed,
             initial_speed: speed,
             angle: 0f32,
-            goal: ShipGoal::Visit(0usize),
+            goal: ShipGoal::Visit { target: 0 },
             ship_type
         }
     }
 }
 
+#[derive(EnumIter)]
 pub enum ShipType {
-    Trader,
+    Trader { has_resource: bool },
     Miner
 }
 
+#[derive(Copy, Clone)]
 pub enum ShipGoal {
-    Visit(usize),
-    Wait(usize, usize)
+    Visit { target: usize },
+    Wait { target: usize, counter: usize }
 }

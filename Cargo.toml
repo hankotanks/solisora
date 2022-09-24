@@ -8,6 +8,7 @@ cgmath = "0.18"
 rand = "0.8.5"
 rand_seeder = "0.2.3"
 strum = { version = "0.24.1", features = ["derive"] }
+itertools = "0.10.5"
 
 winit = "0.26"
 wgpu = "0.13"

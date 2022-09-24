@@ -46,6 +46,6 @@ impl Planet {
 
 #[derive(EnumIter)]
 pub enum PlanetFeature {
-    Station,
+    Station { num_resources: usize },
     Resources
 }
