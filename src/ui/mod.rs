@@ -75,26 +75,32 @@ pub(crate) async fn run(mut sim: crate::sim::Sim) {
 }
 
 fn build_mesh(sim: &Sim) -> Mesh {
-    fn combine_meshes(m1: &mut Mesh, mut m2: Mesh) {
+    fn combine_meshes(m1: &mut Mesh, mut m2: Mesh, scale: f32) {
         let offset = m1.vertices.len();
+        m2.vertices.iter_mut().for_each(|v| { 
+            v.position[0] *= scale; 
+            v.position[1] *= scale; } );
         m1.vertices.append(&mut m2.vertices);
         m2.indices.iter_mut().for_each(|i| *i += offset as u16);
         m1.indices.append(&mut m2.indices);
     }
 
     let mut m = Mesh::default();
+    let scale = (sim.system_rad.powf(2f32) * 2f32).sqrt().recip();
 
     for planet in sim.system.iter() {
         combine_meshes(
             &mut m,
-            Mesh::from_planet(planet)
+            Mesh::from_planet(planet),
+            scale
         );
     }
 
     for ship in sim.ships.iter() {
         combine_meshes(
             &mut m,
-            Mesh::from_ship(ship)
+            Mesh::from_ship(ship),
+            scale
         );
     }
 
@@ -320,10 +326,9 @@ impl State {
                     event::MouseScrollDelta::LineDelta(.., line_delta), 
                     .. 
             } => {
-                self.camera.zoom = (self.camera.zoom + line_delta * -0.1f32).clamp(
-                    0.2f32, 
-                    5.0f32
-                );  
+                let zoom = self.camera.zoom + line_delta * -0.1f32;
+                let zoom = zoom.clamp(0.5f32, 2f32);
+                self.camera.zoom = zoom;  
             },
             _ => { processed = false }
         }

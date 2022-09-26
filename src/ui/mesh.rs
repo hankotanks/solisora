@@ -12,8 +12,8 @@ use crate::sim::{
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct Vertex {
-    position: [f32; 3],
-    color: [f32; 3]
+    pub(super) position: [f32; 3],
+    pub(super) color: [f32; 3]
 }
 
 impl Vertex {
@@ -33,7 +33,7 @@ impl Vertex {
 #[derive(Default)]
 pub(super) struct Mesh {
     pub(super) vertices: Vec<Vertex>,
-    pub(super) indices: Vec<u16>
+    pub(super) indices: Vec<u16>,
 }
 
 impl Mesh {
