@@ -9,7 +9,7 @@ use strum::IntoEnumIterator;
 use rand::{
     Rng, 
     SeedableRng, 
-    seq::{IteratorRandom, SliceRandom}, 
+    seq::IteratorRandom, 
     rngs::StdRng
 };
 
@@ -43,7 +43,7 @@ pub struct SimConfig {
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
-            system_rad: 1.0,
+            system_rad: 2.0,
             system_seed: None,
             sun_rad: 0.1,
             pl_size_multiplier: 0.1..0.3,
