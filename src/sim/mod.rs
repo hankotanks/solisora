@@ -15,7 +15,9 @@ use rand::{
 
 use cgmath::{
     Point2, 
-    MetricSpace, Rad, Angle
+    MetricSpace, 
+    Rad, 
+    Angle
 };
 
 use ship::{
