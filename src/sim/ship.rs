@@ -23,7 +23,7 @@ impl Ship {
     }
 }
 
-#[derive(EnumIter)]
+#[derive(Copy, Clone, EnumIter)]
 pub enum ShipType {
     Trader { has_resource: bool },
     Miner

@@ -53,10 +53,10 @@ impl Default for SimConfig {
             system_rad: 2.0,
             system_seed: None,
             sun_rad: 0.1,
-            pl_moon_prob: 0.75,
-            pl_feat_prob: 0.75,
+            pl_moon_prob: 0.5,
+            pl_feat_prob: 0.5,
             pl_size_multiplier: 0.1..0.5,
-            num_ships: 100
+            num_ships: 10
         }
     }
 }
@@ -165,7 +165,7 @@ impl Sim {
         };
 
         sim.system_rad = total_rad(&sim.system, 0);
-        sim.update_planet(0);
+        sim.update_planet_pos(0);
 
         // Ships start near planets with stations
         let resources = filter_system(&sim.system, Some(PlanetFeature::Resources));
@@ -185,7 +185,8 @@ impl Sim {
     }
 
     pub fn update(&mut self) {
-        self.update_planet(0);
+        // Update positions of all planets
+        self.update_planet_pos(0);
 
         // Spawn new ships from stations with sufficient resources
         for pl_index in 0..self.system.len() {
@@ -206,7 +207,7 @@ impl Sim {
         }
     }
 
-    pub fn update_planet(&mut self, pl_index: usize) {
+    pub fn update_planet_pos(&mut self, pl_index: usize) {
         fn dist_to_sun(pos: Point2<f32>, orbit: Orbit) -> f32 {
             Point2::new(
                 pos.x + orbit.dist * orbit.angle.cos(),
@@ -249,7 +250,7 @@ impl Sim {
 
         // Update all of the current planet's moons
         for moon_index in self.system[pl_index].moon_indices.clone().drain(0..) {
-            self.update_planet(moon_index);
+            self.update_planet_pos(moon_index);
         }
     }
 
@@ -287,6 +288,7 @@ impl Sim {
     }
 
     fn change_ship_objective(&mut self, ship_index: usize) {
+        // Panics if the given planet doesn't have a station
         fn num_resources(pl: &Planet) -> usize {
             if let Some(PlanetFeature::Station { num_resources }) = pl.feat {
                 return num_resources
@@ -295,6 +297,8 @@ impl Sim {
             panic!()
         }
         
+        // Returns a mutable reference to the num_resources field of a station on a given planet
+        // Panics if it doesn't have a station
         fn modify_num_resources(pl: &mut Planet) -> &mut usize {
             if let Some(PlanetFeature::Station { ref mut num_resources } ) = pl.feat {
                 return num_resources;
@@ -303,18 +307,18 @@ impl Sim {
             panic!()
         }
         
-        self.ships[ship_index].goal = match (&self.ships[ship_index].ship_type, &self.ships[ship_index].goal) {
+        // All ship logic occurs in this match expression
+        self.ships[ship_index].goal = match (self.ships[ship_index].ship_type, self.ships[ship_index].goal) {
             (ShipType::Trader { has_resource }, ShipGoal::Visit { target: curr_pl_index } ) => {
-                let curr_pl_index = *curr_pl_index;
-
                 // Deliver resources if the Trader was carrying them
-                if *has_resource {
+                if has_resource {
                     *modify_num_resources(&mut self.system[curr_pl_index]) += 1;
                     self.ships[ship_index].ship_type = ShipType::Trader { has_resource: false };
                 }
 
                 // Find the ship's new destination
-                let stations = filter_system(&self.system, Some(PlanetFeature::Station { num_resources: 0 } ));
+                let stations = filter_system(&self.system, 
+                    Some(PlanetFeature::Station { num_resources: 0 } ));
                 let dest_pl_index = *stations.iter().choose(&mut self.prng).unwrap();
 
                 // Determine if the ship should carry resources from one stations to the new destination
@@ -327,9 +331,8 @@ impl Sim {
                 
                 ShipGoal::Visit { target: dest_pl_index }
             },
-            (ShipType::Miner, ShipGoal::Visit { target: curr_pl_index } ) => {
-                let curr_pl_index = *curr_pl_index;
 
+            (ShipType::Miner, ShipGoal::Visit { target: curr_pl_index } ) => {
                 // The ship's behavior depends on the type of planet is just visited
                 match self.system[curr_pl_index].feat {
                     Some(PlanetFeature::Station { .. } ) => {
@@ -347,6 +350,7 @@ impl Sim {
                     _ => panic!()
                 }
             },
+
             (ShipType::Miner, ShipGoal::Wait { .. } ) => {
                 // After mining, the ship travels to the nearest station to deposit its resources
                 let stations = nearest_with_feature(
@@ -355,6 +359,7 @@ impl Sim {
                     self.ships[ship_index].pos);
                 ShipGoal::Visit { target: stations[0] }
             },
+            
             _ => self.ships[ship_index].goal
         };
     
