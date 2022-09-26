@@ -59,10 +59,10 @@ impl Default for SimConfig {
             pl_moon_prob: 0.5,
             pl_feat_prob: 0.5,
             pl_size_multiplier: 0.1..0.5,
-            ship_count: 10,
+            ship_count: 4,
             ship_mine_progress: 100,
             ship_speed: 0.01,
-            ship_resource_cost: 10
+            ship_resource_cost: 4
         }
     }
 }
@@ -88,8 +88,11 @@ impl Sim {
         fn total_rad(system: &Vec<Planet>, pl_index: usize) -> f32 {
             let mut pl_rad = system[pl_index].rad;
             for &moon_index in system[pl_index].moon_indices.iter() {
+                // Recursively find the total orbital radius of the moon
                 let dist = system[moon_index].orbit.as_ref().unwrap().dist;
                 let dist = dist + total_rad(system, moon_index);
+
+                // Check if this orbit is maximal
                 pl_rad = pl_rad.max(dist);
             }
             
@@ -175,7 +178,7 @@ impl Sim {
         // Initial goals are specific to each ship's job
         let mut ships = Vec::new();
         for _ in 0..config.ship_count {
-            let mut ship = Ship::new(ShipJob::iter().choose(&mut prng).unwrap(), config.ship_speed);
+            let mut ship = Ship::new(ShipJob::Miner, config.ship_speed);
 
             // Use polar coordinates to ensure an even distribution of values
             let r = system_rad * prng.gen::<f32>().sqrt();
