@@ -90,7 +90,7 @@ impl Sim {
         }
 
         // Helper function
-        fn orbit_distance(system: &Vec<Planet>, pl_index: usize, rad: f32) -> f32 {
+        fn dist_to_padded_orbit(system: &Vec<Planet>, pl_index: usize, rad: f32) -> f32 {
             total_rad(&system, pl_index) + system[pl_index].rad + rad * 3f32
         }
 
@@ -116,14 +116,14 @@ impl Sim {
                 let moon_rad = moon_rad * system[pl_index].rad;
                 let moon_index = system.len();
 
-                let dist = orbit_distance(&system, pl_index, moon_rad);
+                let dist = dist_to_padded_orbit(&system, pl_index, moon_rad);
                 system[pl_index].moon_indices.push(moon_index);
                 system.push(Planet::new(moon_rad));
                 system[moon_index].orbit = Some(Orbit::new(pl_index, dist));
             }
 
             // Total radius of the planet subsystem
-            let pl_system_rad = orbit_distance(&system, pl_index, system[pl_index].rad);
+            let pl_system_rad = dist_to_padded_orbit(&system, pl_index, system[pl_index].rad);
 
             // If the new system exceeds the SimConfig field 'system_rad'
             // Remove it and break
@@ -260,7 +260,7 @@ impl Sim {
                 // Update ship objective IFF it has reached its destination
                 let pl_pos = self.system[pl_index].pos;
                 if self.ships[ship_index].pos.distance2(pl_pos) <= self.system[pl_index].rad.powf(2f32) {
-                    self.change_ship_objective(ship_index);
+                    self.update_ship_objective(ship_index);
                     self.ships[ship_index].speed = self.ships[ship_index].initial_speed; // reset speed
                 }
 
@@ -281,13 +281,13 @@ impl Sim {
                 if counter > 0usize {
                     self.ships[ship_index].goal = ShipGoal::Wait { target: pl_index, counter: counter - 1 }
                 } else {
-                    self.change_ship_objective(ship_index);
+                    self.update_ship_objective(ship_index);
                 }
             }
         }
     }
 
-    fn change_ship_objective(&mut self, ship_index: usize) {
+    fn update_ship_objective(&mut self, ship_index: usize) {
         // Panics if the given planet doesn't have a station
         fn num_resources(pl: &Planet) -> usize {
             if let Some(PlanetFeature::Station { num_resources }) = pl.feat {
