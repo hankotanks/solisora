@@ -6,25 +6,24 @@ pub struct Ship {
     pub initial_speed: f32,
     pub angle: f32,
     pub goal: ShipGoal,
-    pub ship_type: ShipType,
+    pub job: ShipJob,
 }
 
 impl Ship {
-    pub fn new(ship_type: ShipType) -> Self {
-        let speed = rand::Rng::gen::<f32>(&mut rand::thread_rng()) * 0.01f32;
+    pub fn new(job: ShipJob) -> Self {
         Self {
             pos: (0f32, 0f32).into(),
-            speed,
-            initial_speed: speed,
+            speed: 0.01f32,
+            initial_speed: 0.01f32,
             angle: 0f32,
             goal: ShipGoal::Visit { target: 0 },
-            ship_type
+            job
         }
     }
 }
 
 #[derive(Copy, Clone, EnumIter)]
-pub enum ShipType {
+pub enum ShipJob {
     Trader { has_resource: bool },
     Miner
 }
@@ -32,5 +31,5 @@ pub enum ShipType {
 #[derive(Copy, Clone)]
 pub enum ShipGoal {
     Visit { target: usize },
-    Wait { target: usize, counter: usize }
+    Wait { target: usize, progress: usize }
 }

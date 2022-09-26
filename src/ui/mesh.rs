@@ -6,7 +6,7 @@ use rand_seeder::SipHasher;
 
 use crate::sim::{
     planet::Planet, 
-    ship::{Ship, ShipType}
+    ship::{Ship, ShipJob}
 };
 
 #[repr(C)]
@@ -109,9 +109,9 @@ impl Mesh {
     pub(super) fn from_ship(ship: &Ship) -> Self {
         Self {
             vertices: {
-                let color = match ship.ship_type {
-                    ShipType::Miner => [1f32, 0.4f32, 0f32],
-                    ShipType::Trader { .. } => [0f32, 0.6f32, 1f32]
+                let color = match ship.job {
+                    ShipJob::Miner => [1f32, 0.4f32, 0f32],
+                    ShipJob::Trader { .. } => [0f32, 0.6f32, 1f32]
                 };
         
                 let min = ship.angle - 0.2617994;
@@ -160,7 +160,7 @@ impl Mesh {
     }
 }
 
-const PLANET_INDICES: &'static [u16] = &[
+const PLANET_INDICES: &[u16] = &[
       1, 2, 0, 
       2, 3, 0, 
       3, 4, 0, 
