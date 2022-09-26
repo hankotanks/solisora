@@ -1,62 +1,58 @@
 pub mod ship;
 pub mod planet;
 
-use std::mem::discriminant;
-use std::f32::consts::TAU;
-use std::ops::Range;
-use strum::IntoEnumIterator;
-
+use std::{
+    f32::consts::TAU,
+    ops::Range,
+    mem::discriminant };
 use rand::{
     Rng, 
     SeedableRng, 
     seq::IteratorRandom, 
-    rngs::StdRng
-};
-
+    rngs::StdRng };
 use cgmath::{
     Point2, 
     MetricSpace, 
     Rad, 
-    Angle
-};
+    Angle };
+use strum::IntoEnumIterator;
 
 use ship::{
     Ship,
     ShipType,
-    ShipGoal
-};
+    ShipGoal };
 use planet::{
     Planet,
     Orbit,
-    PlanetFeature
-};
+    PlanetFeature };
 
 #[derive(Clone)]
 pub struct SimConfig {
     system_rad: f32,
     system_seed: Option<u64>,
     sun_rad: f32,
-    pl_size_multiplier: Range<f32>,
     pl_moon_prob: f64,
     pl_feat_prob: f64,
+    pl_size_multiplier: Range<f32>,
     num_ships: usize
 }
 
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
-            system_rad: 2.0,
+            system_rad: 1.5,
             system_seed: None,
             sun_rad: 0.1,
-            pl_size_multiplier: 0.1..0.3,
-            pl_moon_prob: 0.5,
-            pl_feat_prob: 0.2,
-            num_ships: 20
+            pl_moon_prob: 0.75,
+            pl_feat_prob: 0.75,
+            pl_size_multiplier: 0.1..0.5,
+            num_ships: 100
         }
     }
 }
 
 pub struct Sim {
+    pub prng: StdRng,
     pub system: Vec<Planet>,
     pub system_rad: f32,
     pub ships: Vec<Ship>
@@ -145,43 +141,53 @@ impl Sim {
 
         // Randomly add PlanetFeatures throughout the system
         for pl in system.iter_mut().skip(1) {
-            if prng.gen_bool(config.pl_feat_prob) {
-                if pl.feat.is_none() {
-                    pl.feat = Some(PlanetFeature::iter().choose(&mut prng).unwrap());
-                }
+            if prng.gen_bool(config.pl_feat_prob) && pl.feat.is_none() {
+                pl.feat = Some(PlanetFeature::iter().choose(&mut prng).unwrap());
             }
         }
 
-        let system_rad = total_rad(&system, 0);
-        let ships = Vec::new();
-        
         let mut sim = Self {
+            prng,
             system,
-            system_rad,
-            ships
+            system_rad: 0f32,
+            ships: Vec::new()
         };
+
+        sim.system_rad = total_rad(&sim.system, 0);
         sim.update_planet(0);
 
         // Ships start near planets with stations
         let resources = filter_system(&sim.system, Some(PlanetFeature::Resources));
         let stations = filter_system(&sim.system, Some(PlanetFeature::Station { num_resources: 0 } ));
         for _ in 0..config.num_ships {
-            let mut ship = Ship::new(ShipType::iter().choose(&mut prng).unwrap());
-            ship.pos = sim.system[*stations.iter().choose(&mut prng).unwrap()].pos;
+            let mut ship = Ship::new(ShipType::iter().choose(&mut sim.prng).unwrap());
+            ship.pos = sim.system[*stations.iter().choose(&mut sim.prng).unwrap()].pos;
             ship.goal = match ship.ship_type {
-                ShipType::Miner => ShipGoal::Visit { target: *resources.iter().choose(&mut prng).unwrap() },
-                ShipType::Trader { .. } => ShipGoal::Visit { target: *stations.iter().choose(&mut prng).unwrap() }
+                ShipType::Miner => ShipGoal::Visit { target: *resources.iter().choose(&mut sim.prng).unwrap() },
+                ShipType::Trader { .. } => ShipGoal::Visit { target: *stations.iter().choose(&mut sim.prng).unwrap() }
             };
 
             sim.ships.push(ship);
         }
 
         sim
-
     }
 
     pub fn update(&mut self) {
         self.update_planet(0);
+
+        let stations = filter_system(&self.system, Some(PlanetFeature::Station { num_resources: 0 } ));
+        for pl_index in stations.iter() {
+            if num_resources(&self.system[*pl_index]) > 10 {
+                for _ in 0..10 { decr_num_resources(&mut self.system[*pl_index]) }
+                let stations = filter_system(&self.system, Some(PlanetFeature::Station { num_resources: 0 } ));
+                
+                let mut ship = Ship::new(ShipType::Trader { has_resource: false } );
+                ship.pos = self.system[*pl_index].pos;
+                ship.goal = ShipGoal::Visit { target: *stations.iter().choose(&mut self.prng).unwrap() };
+                self.ships.push(ship);
+            }
+        }
 
         for ship_index in 0..self.ships.len() {
             self.update_ship(ship_index);
@@ -214,7 +220,10 @@ impl Sim {
                 temp_orbit.angle += offset;
                 temp_orbit.angle %= TAU;
                 dist_to_sun(parent_pos, temp_orbit) };
-            offset *= (self.system_rad - dist) / self.system_rad; // the nearer a planet is, the FASTER it goes
+            if pl_orbit.parent_index == 0 {
+                offset *= (self.system_rad - dist).sqrt() / self.system_rad; // the nearer a planet is, the FASTER it goes
+            }
+            
 
             // update the current angle of the orbit
             pl_orbit.angle += offset;
@@ -243,7 +252,7 @@ impl Sim {
                 }
 
                 let stations = filter_system(&self.system, Some(PlanetFeature::Station { num_resources: 0 } ));
-                let dest_pl_index = *stations.iter().choose(&mut rand::thread_rng()).unwrap();
+                let dest_pl_index = *stations.iter().choose(&mut self.prng).unwrap();
 
                 let curr_pl_resources = num_resources(&self.system[curr_pl_index]);
                 let dest_pl_resources = num_resources(&self.system[dest_pl_index]);
@@ -259,12 +268,11 @@ impl Sim {
 
                 match self.system[curr_pl_index].feat {
                     Some(PlanetFeature::Station { .. } ) => {
+                        incr_num_resources(&mut self.system[curr_pl_index]);
                         let resources = nearest_with_feature(
                             &self.system, 
                             Some(PlanetFeature::Resources), 
-                            self.ships[ship_index].pos
-                        );
-
+                            self.ships[ship_index].pos);
                         ShipGoal::Visit { target: resources[0] }
                     },
                     Some(PlanetFeature::Resources) => {
@@ -277,8 +285,7 @@ impl Sim {
                 let stations = nearest_with_feature(
                     &self.system, 
                     Some(PlanetFeature::Station { num_resources: 0 } ), 
-                    self.ships[ship_index].pos
-                );
+                    self.ships[ship_index].pos);
                 ShipGoal::Visit { target: stations[0] }
             },
             _ => self.ships[ship_index].goal
@@ -360,11 +367,17 @@ fn num_resources(pl: &Planet) -> usize {
 fn incr_num_resources(pl: &mut Planet) {
     if let Some(PlanetFeature::Station { ref mut num_resources } ) = pl.feat {
         *num_resources += 1;
+        return;
     }
+
+    panic!()
 }
 
 fn decr_num_resources(pl: &mut Planet) {
     if let Some(PlanetFeature::Station { ref mut num_resources } ) = pl.feat {
         *num_resources -= 1;   
+        return;
     }
+
+    panic!()
 }

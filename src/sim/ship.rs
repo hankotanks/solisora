@@ -1,4 +1,3 @@
-use rand::Rng;
 use strum::EnumIter;
 
 pub struct Ship {
@@ -12,8 +11,7 @@ pub struct Ship {
 
 impl Ship {
     pub fn new(ship_type: ShipType) -> Self {
-        let mut prng = rand::thread_rng();
-        let speed = prng.gen::<f32>() * 0.01f32;
+        let speed = rand::Rng::gen::<f32>(&mut rand::thread_rng()) * 0.01f32;
         Self {
             pos: (0f32, 0f32).into(),
             speed,
