@@ -45,7 +45,9 @@ pub struct SimConfig {
     pl_feat_prob: f64,
     pl_size_multiplier: Range<f32>,
     ship_count: usize,
-    ship_mine_progress: usize
+    ship_mine_progress: usize,
+    ship_speed: f32,
+    ship_resource_cost: usize
 }
 
 impl Default for SimConfig {
@@ -58,7 +60,9 @@ impl Default for SimConfig {
             pl_feat_prob: 0.5,
             pl_size_multiplier: 0.1..0.5,
             ship_count: 10,
-            ship_mine_progress: 100
+            ship_mine_progress: 100,
+            ship_speed: 0.01,
+            ship_resource_cost: 10
         }
     }
 }
@@ -171,7 +175,7 @@ impl Sim {
         // Initial goals are specific to each ship's job
         let mut ships = Vec::new();
         for _ in 0..config.ship_count {
-            let mut ship = Ship::new(ShipJob::iter().choose(&mut prng).unwrap());
+            let mut ship = Ship::new(ShipJob::iter().choose(&mut prng).unwrap(), config.ship_speed);
 
             // Use polar coordinates to ensure an even distribution of values
             let r = system_rad * prng.gen::<f32>().sqrt();
@@ -201,9 +205,9 @@ impl Sim {
         // Spawn new ships from stations with sufficient resources
         for pl_index in 0..self.system.len() {
             if let Some(PlanetFeature::Station { ref mut num_resources } ) = self.system[pl_index].feat {
-                if *num_resources > 10 {
-                    *num_resources -= 10;
-                    let mut ship = Ship::new(ShipJob::Trader { has_resource: false } );
+                if *num_resources > self.config.ship_resource_cost {
+                    *num_resources -= self.config.ship_resource_cost;
+                    let mut ship = Ship::new(ShipJob::Trader { has_resource: false }, self.config.ship_speed);
                     ship.pos = self.system[pl_index].pos;
                     ship.goal = ShipGoal::Visit { target: pl_index };
                     self.ships.push(ship);

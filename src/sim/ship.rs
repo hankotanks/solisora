@@ -10,11 +10,11 @@ pub struct Ship {
 }
 
 impl Ship {
-    pub fn new(job: ShipJob) -> Self {
+    pub fn new(job: ShipJob, speed: f32) -> Self {
         Self {
             pos: (0f32, 0f32).into(),
-            speed: 0.01f32,
-            initial_speed: 0.01f32,
+            speed,
+            initial_speed: speed,
             angle: 0f32,
             goal: ShipGoal::Visit { target: 0 },
             job
