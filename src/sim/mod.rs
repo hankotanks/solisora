@@ -47,6 +47,7 @@ pub struct SimConfig {
     ship_count: usize,
     ship_mine_progress: usize,
     ship_speed: f32,
+    ship_acceleration: f32,
     ship_resource_cost: usize
 }
 
@@ -62,6 +63,7 @@ impl Default for SimConfig {
             ship_count: 4,
             ship_mine_progress: 100,
             ship_speed: 0.01,
+            ship_acceleration: 1.05,
             ship_resource_cost: 4
         }
     }
@@ -292,7 +294,7 @@ impl Sim {
                 self.ships[ship_index].pos.x += dx * self.ships[ship_index].speed;
                 self.ships[ship_index].pos.y += dy * self.ships[ship_index].speed;
                 self.ships[ship_index].angle = Rad::atan2(dx, dy).0 + PI;
-                self.ships[ship_index].speed *= 1.05f32;
+                self.ships[ship_index].speed *= self.config.ship_acceleration;
             },
 
             ShipGoal::Wait { target: pl_index, progress } => {
