@@ -338,7 +338,7 @@ impl Sim {
                 // Determine if the ship should carry resources from one stations to the new destination
                 let curr_pl_resources = *num_resources(&mut self.system[curr_pl_index]);
                 let dest_pl_resources = *num_resources(&mut self.system[dest_pl_index]);
-                if curr_pl_resources > dest_pl_resources {
+                if curr_pl_resources > dest_pl_resources && !has_resource {
                     *num_resources(&mut self.system[curr_pl_index]) -= 1; // take resource from station...
                     self.ships[ship_index].job = ShipJob::Trader { has_resource: true }; // give to ship
                 }                     
