@@ -151,14 +151,17 @@ impl Sim {
             );
         };
 
-        // There needs to be at least 3 planets for the ships to have proper hbehavior
-        if system.len() < 3 {
+        // There needs to be at least 4 planets for the ships to have proper behavior
+        // SUN -- 2 w/ STATIONS -- 1 w/ RESOURCES
+        if system.len() < 4 {
             panic!()
         }
 
         // Ensure that planets with essential features are present
+        let rand_pl_index = prng.gen_range(2..system.len());
         system[1].feat = Some(PlanetFeature::Station { num_resources: 0 } );
-        system.last_mut().unwrap().feat = Some(PlanetFeature::Resources);
+        system[rand_pl_index].feat = Some(PlanetFeature::Resources);
+        system.last_mut().unwrap().feat = Some(PlanetFeature::Station { num_resources: 0 } );
 
         // Randomly add PlanetFeatures throughout the system
         for pl in system.iter_mut().skip(1) {
@@ -327,8 +330,9 @@ impl Sim {
                 }
 
                 // Find the ship's new destination
-                let stations = filter_system(&self.system, 
+                let mut stations = filter_system(&self.system, 
                     Some(PlanetFeature::Station { num_resources: 0 } ));
+                stations.retain(|pl| *pl != curr_pl_index);
                 let dest_pl_index = *stations.iter().choose(&mut self.prng).unwrap();
 
                 // Determine if the ship should carry resources from one stations to the new destination
