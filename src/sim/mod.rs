@@ -102,7 +102,7 @@ impl Sim {
         }
 
         // Helper function
-        fn padded_rad(system: &Vec<Planet>, pl_index: usize, rad: f32) -> f32 {
+        fn padded_total_rad(system: &Vec<Planet>, pl_index: usize, rad: f32) -> f32 {
             total_rad(system, pl_index) + system[pl_index].rad + rad * 3f32
         }
 
@@ -129,7 +129,7 @@ impl Sim {
                 let moon_rad = pl_rad * mult;
                 let moon_index = system.len();
 
-                let dist = padded_rad(&system, pl_index, moon_rad);
+                let dist = padded_total_rad(&system, pl_index, moon_rad);
                 let moon_orbit = Orbit::new(pl_index, dist);
 
                 system[pl_index].moon_indices.push(moon_index);
@@ -138,7 +138,7 @@ impl Sim {
             }
 
             // Total radius of the planet subsystem
-            let pl_system_rad = padded_rad(&system, pl_index, pl_rad);
+            let pl_system_rad = padded_total_rad(&system, pl_index, pl_rad);
 
             // If the new system exceeds the SimConfig field 'system_rad'
             // Remove it and break
@@ -239,7 +239,9 @@ impl Sim {
 
         // Spawn new ships from stations with sufficient resources
         for pl_index in 0..self.system.len() {
-            if let Some(PlanetFeature::Station { ref mut num_resources } ) = self.system[pl_index].feat {
+            if let Some(
+                PlanetFeature::Station { ref mut num_resources } 
+            ) = self.system[pl_index].feat {
                 if *num_resources > self.config.ship_resource_cost {
                     *num_resources -= self.config.ship_resource_cost;
                     let mut ship = Ship::new(
@@ -259,6 +261,8 @@ impl Sim {
         }
     }
 
+    /// Updates the planet at given index, then recursively updates its moons
+    /// If called on the sun (Self::system[0]), updates the whole system
     pub fn update_planet_pos(&mut self, pl_index: usize) {
         fn dist_to_sun(pos: Point2<f32>, orbit: Orbit) -> f32 {
             Point2::new(
@@ -318,6 +322,8 @@ impl Sim {
         }
     }
 
+    /// Updates ship position and checks the status of its goal
+    /// If the ship has achieved its goal, Self::update_ship_goal is called
     pub fn update_ship(&mut self, ship_index: usize) {     
         let mut ship = &mut self.ships[ship_index];
 
@@ -361,11 +367,12 @@ impl Sim {
         }
 
         if ship_objective_complete {
-            self.update_ship_objective(ship_index)
+            self.update_ship_goal(ship_index)
         }
     }
 
-    fn update_ship_objective(&mut self, ship_index: usize) {
+    /// Assumes that the ship has achieved its previous goal
+    fn update_ship_goal(&mut self, ship_index: usize) {
         // Returns a mutable reference to the num_resources field of a station
         // Panics if given planet doesn't have a station
         fn num_resources(pl: &mut Planet) -> &mut usize {
@@ -401,17 +408,15 @@ impl Sim {
                     dest = *stations.iter().choose(&mut self.prng).unwrap();
                 }
                 
-
-                let carry = { // Determine if the ship should carry resources
+                #[allow(clippy::blocks_in_if_conditions)]
+                if { // Determine if the ship should carry resources
                     let target_res = *num_resources(&mut self.system[target]);
                     let dest_res = *num_resources(&mut self.system[dest]);
 
                     // Should carry resources if destination has less
                     // AND if it didn't carry any to this station
                     target_res > dest_res && !has_resource 
-                }; 
-                
-                if carry {
+                } {
                     // Take resource from station and give to ship
                     *num_resources(&mut self.system[target]) -= 1;
                     self.ships[ship_index].job = ShipJob::Trader { 
