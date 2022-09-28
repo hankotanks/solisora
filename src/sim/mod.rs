@@ -102,7 +102,7 @@ impl Sim {
         }
 
         // Helper function
-        fn dist_to_padded_orbit(system: &Vec<Planet>, pl_index: usize, rad: f32) -> f32 {
+        fn dist_to_moon(system: &Vec<Planet>, pl_index: usize, rad: f32) -> f32 {
             total_rad(system, pl_index) + system[pl_index].rad + rad * 3f32
         }
 
@@ -117,25 +117,28 @@ impl Sim {
         
         loop { // Populate system with planet subsystems
             let pl_index = system.len();
-            let pl_rad = config.sun_rad * prng.gen_range(config.pl_size_multiplier.clone());
+            let mut pl_rad = config.sun_rad;
+            pl_rad *= prng.gen_range(config.pl_size_multiplier.clone());
             system.push(Planet::new(pl_rad));
 
             while { 
                 total_rad(&system, pl_index) < system[pl_index].rad * 5f32 &&
                 prng.gen_bool(config.pl_moon_prob) 
             } {
-                let moon_rad = prng.gen_range(config.pl_size_multiplier.clone());
-                let moon_rad = moon_rad * system[pl_index].rad;
+                let mult = prng.gen_range(config.pl_size_multiplier.clone());
+                let moon_rad = pl_rad * mult;
                 let moon_index = system.len();
 
-                let dist = dist_to_padded_orbit(&system, pl_index, moon_rad);
+                let dist = dist_to_moon(&system, pl_index, moon_rad);
+                let moon_orbit = Orbit::new(pl_index, dist);
+
                 system[pl_index].moon_indices.push(moon_index);
                 system.push(Planet::new(moon_rad));
-                system[moon_index].orbit = Some(Orbit::new(pl_index, dist));
+                system[moon_index].orbit = Some(moon_orbit);
             }
 
             // Total radius of the planet subsystem
-            let pl_system_rad = dist_to_padded_orbit(&system, pl_index, system[pl_index].rad);
+            let pl_system_rad = dist_to_moon(&system, pl_index, pl_rad);
 
             // If the new system exceeds the SimConfig field 'system_rad'
             // Remove it and break
@@ -153,48 +156,59 @@ impl Sim {
             );
         };
 
-        // There needs to be at least 4 planets for the ships to have proper behavior
+        // Must be at least 4 planets for the ships to have proper behavior
         // SUN -- 2 w/ STATIONS -- 1 w/ RESOURCES
         if system.len() < 4 {
             panic!()
         }
 
-        // Ensure that planets with essential features are present
-        let rand_pl_index = prng.gen_range(2..system.len());
-        system[1].feat = Some(PlanetFeature::Station { num_resources: 0 } );
-        system[rand_pl_index].feat = Some(PlanetFeature::Resources);
-        system.last_mut().unwrap().feat = Some(PlanetFeature::Station { num_resources: 0 } );
+        {
+            // Ensure that planets with essential features are present
+            let last_pl_index = system.len() - 1;
+            let rand_pl_index = prng.gen_range(2..system.len());
+            system[1].feat = Some(PlanetFeature::Station { num_resources: 0 } );
+            system[last_pl_index].feat = Some(PlanetFeature::Station { num_resources: 0 } );
+            system[rand_pl_index].feat = Some(PlanetFeature::Resources);
 
-        // Randomly add PlanetFeatures throughout the system
-        for pl in system.iter_mut().skip(1) {
-            if prng.gen_bool(config.pl_feat_prob) && pl.feat.is_none() {
-                pl.feat = Some(PlanetFeature::iter().choose(&mut prng).unwrap());
+            // Randomly add PlanetFeatures throughout the system
+            for pl in system.iter_mut().skip(1) {
+                if prng.gen_bool(config.pl_feat_prob) && pl.feat.is_none() {
+                    pl.feat = Some(PlanetFeature::iter().choose(&mut prng).unwrap());
+                }
             }
         }
 
         // The ACTUAL radius of the system, in contrast to config.system_rad
         let system_rad = total_rad(&system, 0);
 
-        // Used to choose a destination for new ships
-        let stations = filter_system(&system, Some(PlanetFeature::Station { num_resources: 0 } ));
-        let resources = filter_system(&system, Some(PlanetFeature::Resources));
-
-        // Ships start at random points, with random destinations
-        // Initial goals are specific to each ship's job
         let mut ships = Vec::new();
         for _ in 0..config.ship_count {
             let mut ship = Ship::new(ShipJob::Miner, config.ship_speed);
+                // Use polar coordinates to ensure an even distribution of values
+                let r = system_rad * prng.gen::<f32>().sqrt();
+                let theta = prng.gen::<f32>() * TAU;
+                ship.pos = Point2::new(r * theta.cos(), r * theta.sin());
 
-            // Use polar coordinates to ensure an even distribution of values
-            let r = system_rad * prng.gen::<f32>().sqrt();
-            let theta = prng.gen::<f32>() * TAU;
+                ships.push(ship);
+        }
 
-            // Convert position to cartesian coordinates, then assign goal
-            ship.pos = Point2::new(r * theta.cos(), r * theta.sin());
-            ship.goal = match ship.job {
-                ShipJob::Miner => ShipGoal::Visit { target: *resources.iter().choose(&mut prng).unwrap() },
-                ShipJob::Trader { .. } => ShipGoal::Visit { target: *stations.iter().choose(&mut prng).unwrap() } };
-            ships.push(ship);
+        {
+            // Used to choose a destination for new ships
+            let stations = filter_system(&system, Some(PlanetFeature::Station { num_resources: 0 } ));
+            let resources = filter_system(&system, Some(PlanetFeature::Resources));
+
+            // Ships start at random points, with random destinations
+            // Initial goals are specific to each ship's job
+            for ship in ships.iter_mut() {
+                ship.goal = match ship.job {
+                    ShipJob::Miner => ShipGoal::Visit { 
+                        target: *resources.iter().choose(&mut prng).unwrap() 
+                    },
+                    ShipJob::Trader { .. } => ShipGoal::Visit { 
+                        target: *stations.iter().choose(&mut prng).unwrap() 
+                    } 
+                };
+            }
         }
 
         Self {
