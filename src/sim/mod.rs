@@ -51,7 +51,8 @@ pub struct SimConfig {
     ship_cost: usize,
     ship_scan_range: f32,
     pirate_count: usize,
-    pirate_speed: f32
+    pirate_speed: f32,
+    pirate_theft_rad: f32
 
 }
 
@@ -71,7 +72,8 @@ impl Default for SimConfig {
             ship_cost: 4,
             ship_scan_range: 0.5,
             pirate_count: 6,
-            pirate_speed: 0.02
+            pirate_speed: 0.02,
+            pirate_theft_rad: 0.01
         }
     }
 }
@@ -419,7 +421,7 @@ impl Sim {
                 update_ship_pos(ship, prey_pos);
 
                 // Pirate steals cargo when within 1/10 solar rad of trader
-                let dest_rad = self.system[0].rad * 0.1;
+                let dest_rad = self.config.pirate_theft_rad;
                 if arrived(ship.pos, prey_pos, dest_rad) {
                     ship_objective_complete = true;
                 }
