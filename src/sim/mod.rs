@@ -68,7 +68,7 @@ impl Default for SimConfig {
             ship_speed: 0.01,
             ship_acceleration: 1.05,
             ship_resource_cost: 4,
-            ship_scan_range: 0.2,
+            ship_scan_range: 0.3,
             ship_theft_range: 0.02
         }
     }
@@ -223,9 +223,7 @@ impl Sim {
         ships.push( {
             let mut pirate = Ship::new(ShipJob::Pirate, config.ship_speed);
             pirate.pos = rand_pos(&mut prng, system_rad);
-            pirate.goal = ShipGoal::Search {
-                dest: {rand_pos(&mut prng, system_rad)}
-            };
+            pirate.goal = ShipGoal::Search { dest: pirate.pos };
 
             pirate
         } );
@@ -449,6 +447,11 @@ impl Sim {
         
             panic!()
         }
+
+        fn clamp_to_radius(pos: &mut Point2<f32>, rad: f32) {
+            pos.x = pos.x.clamp(-1f32 * rad, rad);
+            pos.y = pos.y.clamp(-1f32 * rad, rad);
+        }
         
         // All ship logic occurs in this match expression
         let job = self.ships[ship_index].job;
@@ -545,9 +548,10 @@ impl Sim {
                     Some(prey_index) => ShipGoal::Hunt { prey: prey_index },
                     None => {
                         // TODO
-                        let mut dest_pos = rand_pos(&mut self.prng, self.config.ship_scan_range);
+                        let mut dest_pos = rand_pos(&mut self.prng, self.system_rad * 0.5);
                         dest_pos.x += self.ships[ship_index].pos.x;
                         dest_pos.y += self.ships[ship_index].pos.y;
+                        clamp_to_radius(&mut dest_pos, self.system_rad);
 
                         ShipGoal::Search { dest: dest_pos }
                     }
@@ -563,9 +567,10 @@ impl Sim {
                 }
 
                 // TODO
-                let mut dest_pos = rand_pos(&mut self.prng, self.config.ship_scan_range);
+                let mut dest_pos = rand_pos(&mut self.prng, self.system_rad * 0.5);
                 dest_pos.x += self.ships[ship_index].pos.x;
                 dest_pos.y += self.ships[ship_index].pos.y;
+                clamp_to_radius(&mut dest_pos, self.system_rad);
 
                 ShipGoal::Search { dest: dest_pos }
             },
