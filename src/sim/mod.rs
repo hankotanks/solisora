@@ -44,13 +44,13 @@ pub struct SimConfig {
     pl_moon_prob: f64,
     pl_feat_prob: f64,
     pl_size_multiplier: Range<f32>,
-    ship_count: usize,
+    miner_count: usize,
+    pirate_count: usize,
     ship_mine_progress: usize,
     ship_speed: f32,
     ship_acceleration: f32,
-    ship_resource_cost: usize,
-    ship_scan_range: f32,
-    ship_theft_range: f32
+    ship_cost: usize,
+    ship_scan_range: f32
 
 }
 
@@ -63,13 +63,13 @@ impl Default for SimConfig {
             pl_moon_prob: 0.5,
             pl_feat_prob: 0.5,
             pl_size_multiplier: 0.1..0.5,
-            ship_count: 4,
+            miner_count: 8,
+            pirate_count: 8,
             ship_mine_progress: 100,
             ship_speed: 0.01,
             ship_acceleration: 1.05,
-            ship_resource_cost: 4,
-            ship_scan_range: 0.3,
-            ship_theft_range: 0.02
+            ship_cost: 4,
+            ship_scan_range: 0.5,
         }
     }
 }
@@ -166,18 +166,18 @@ impl Sim {
         }
 
         // Must be at least 4 planets for the ships to have proper behavior
-        // SUN -- 2 w/ STATIONS -- 1 w/ RESOURCES
+        // The sun, 2 planets with stations, 1 with ore
         if system.len() < 4 {
             panic!()
         }
 
         {
             fn new_station() -> PlanetFeature { 
-                PlanetFeature::Station { num_resources: 0 } 
+                PlanetFeature::Station { stock: 0 } 
             }
 
-            fn new_resources() -> PlanetFeature { 
-                PlanetFeature::Resources 
+            fn new_ore_feature() -> PlanetFeature { 
+                PlanetFeature::Ore 
             }
 
             // Ensure that planets with essential features are present
@@ -185,7 +185,7 @@ impl Sim {
             let rand_pl_index = prng.gen_range(2..system.len());
             system[1].feat = Some(new_station());
             system[last_pl_index].feat = Some(new_station());
-            system[rand_pl_index].feat = Some(new_resources());
+            system[rand_pl_index].feat = Some(new_ore_feature());
 
             // Randomly add PlanetFeatures throughout the system
             for pl in system.iter_mut().skip(1) {
@@ -199,7 +199,7 @@ impl Sim {
         let system_rad = total_rad(&system, 0);
 
         let mut ships = Vec::new();
-        for _ in 0..config.ship_count {
+        for _ in 0..config.miner_count {
             let mut ship = Ship::new(ShipJob::Miner, config.ship_speed);
             // Use polar coordinates to ensure even distribution
             ship.pos = rand_pos(&mut prng, system_rad);
@@ -211,23 +211,23 @@ impl Sim {
         {
             // Ships start at random points, with random destinations
             // Initial goals are specific to each ship's job
-            let resources = resource_indices(&system);
+            let ores = ore_indices(&system);
             for ship in ships.iter_mut() {
                 ship.goal = ShipGoal::Visit { 
-                    target: *resources.iter().choose(&mut prng).unwrap()
+                    target: *ores.iter().choose(&mut prng).unwrap()
                 };
             }
         }
 
-        // TODO
-        for _ in 0..5 {
-            ships.push( {
-                let mut pirate = Ship::new(ShipJob::Pirate, config.ship_speed);
-                pirate.pos = rand_pos(&mut prng, system_rad);
-                pirate.goal = ShipGoal::Search;
-    
-                pirate
-            } );
+        // Generate a few pirate ships to steal from traders
+        for _ in 0..config.pirate_count {
+            let mut pirate = Ship::new(
+                ShipJob::Pirate, config.ship_speed);
+            pirate.pos = rand_pos(&mut prng, system_rad);
+            pirate.goal = ShipGoal::Wander; // pirates start by wandering
+
+            // Add pirate after giving it a random pos
+            ships.push(pirate);
         }
         
 
@@ -244,15 +244,15 @@ impl Sim {
         // Update positions of all planets
         self.update_planet_pos(0);
 
-        // Spawn new ships from stations with sufficient resources
+        // Spawn new ships from stations with sufficient stock
         for pl_index in 0..self.system.len() {
             if let Some(
-                PlanetFeature::Station { ref mut num_resources } 
+                PlanetFeature::Station { ref mut stock } 
             ) = self.system[pl_index].feat {
-                if *num_resources > self.config.ship_resource_cost {
-                    *num_resources -= self.config.ship_resource_cost;
+                if *stock > self.config.ship_cost {
+                    *stock -= self.config.ship_cost;
                     let mut ship = Ship::new(
-                        ShipJob::Trader { has_resource: false }, 
+                        ShipJob::Trader { has_ore: false }, 
                         self.config.ship_speed);
                     ship.pos = self.system[pl_index].pos;
                     ship.goal = ShipGoal::Visit { target: pl_index };
@@ -348,8 +348,7 @@ impl Sim {
         }
         
         let mut ship_objective_complete = false;
-        let mut ship_goal = self.ships[ship_index].goal;
-        match ship_goal {
+        match self.ships[ship_index].goal {
             ShipGoal::Visit { target: pl_index } => {
                 // Update ship objective IFF it has reached its destination
                 let pl_pos = self.system[pl_index].pos;
@@ -361,31 +360,33 @@ impl Sim {
                     ship_objective_complete = true;
                 }
 
-                update_ship_pos(&mut ship, pl_pos);
+                update_ship_pos(ship, pl_pos);
                 ship.speed *= self.config.ship_acceleration;
             },
 
             ShipGoal::Wait { target: pl_index, progress } => {
                 // Ships dock on planets while waiting
                 self.ships[ship_index].pos = self.system[pl_index].pos;
+                self.ships[ship_index].goal = ShipGoal::Wait { 
+                    target: pl_index, 
+                    progress: progress + 1 
+                };
 
                 // Update ship objective if the ship is done mining
-                if progress < self.config.ship_mine_progress {
-                    ship_goal /* TODO */ = ShipGoal::Wait { 
-                        target: pl_index, 
-                        progress: progress + 1 
-                    };
-                } else {
+                if progress == self.config.ship_mine_progress {
                     ship_objective_complete = true;
                 }
             },
 
-            ShipGoal::Search => {
+            ShipGoal::Wander => {
+                let mut angle_offset = 0.0174 * 4f32;
+                if self.prng.gen_bool(0.5) { angle_offset *= -1f32; }
+
                 // Move towards a random point
                 let mut ship = &mut self.ships[ship_index];
-                ship.angle += 0.0174f32 * if self.prng.gen_bool(0.5) { 4f32 } else { -4f32 };
-                ship.pos.x += (ship.angle + 90f32 * 0.0174f32).cos() * ship.speed;
-                ship.pos.y -= (ship.angle + 90f32 * 0.0174f32).sin() * ship.speed;
+                ship.angle += angle_offset;
+                ship.pos.x += (ship.angle + 1.566).cos() * ship.speed;
+                ship.pos.y -= (ship.angle + 1.566).sin() * ship.speed;
 
                 if ship.pos.distance((0f32, 0f32).into()) > self.system_rad {
                     ship.angle += 0.0174f32 * 180f32;
@@ -394,39 +395,23 @@ impl Sim {
                 ship_objective_complete = true;
             },
             
-            ShipGoal::Scan { ref mut prey } => {
-                let mut prey_indices = Vec::new();
-
-                let ship_count = self.ships.len();
-                for target_ship_index in 0..ship_count {
-                    let target_ship_job = self.ships[target_ship_index].job;
-                    if let ShipJob::Trader { has_resource: true } = target_ship_job {
-                        let ship_pos = self.ships[ship_index].pos;
-                        let target_ship_pos = self.ships[target_ship_index].pos;
-                        let dist = ship_pos.distance(target_ship_pos);
-                        if dist < self.config.ship_scan_range {
-                            prey_indices.push(target_ship_index);
-                        }
-                    }
-                }
-
-                if let Some(prey_index) = prey_indices.iter().choose(&mut self.prng) {
-                    *prey = Some(*prey_index);
-                } 
-
+            ShipGoal::Scan => {
                 // Update no matter what after the scan cycle
                 ship_objective_complete = true;
             },
 
             ShipGoal::Hunt { prey } => {
+                // Pirate stall traders when pursuing them
                 self.ships[prey].speed = self.ships[prey].initial_speed;
 
+                // Move towards the prey ship
                 let prey_pos = self.ships[prey].pos;
                 let mut ship = &mut self.ships[ship_index];
                 update_ship_pos(ship, prey_pos);
                 ship.speed *= self.config.ship_acceleration;
 
-                let dest_rad = self.config.ship_theft_range;
+                // Pirate steals cargo when within 1/10 solar rad of trader
+                let dest_rad = self.system[0].rad * 0.1;
                 if arrived(ship.pos, prey_pos, dest_rad) {
                     ship_objective_complete = true;
                     ship.speed = ship.initial_speed;
@@ -434,7 +419,6 @@ impl Sim {
             }
         }
 
-        self.ships[ship_index].goal = ship_goal; // TODO
         if ship_objective_complete {
             self.update_ship_goal(ship_index)
         }
@@ -442,19 +426,14 @@ impl Sim {
 
     /// Assumes that the ship has achieved its previous goal
     fn update_ship_goal(&mut self, ship_index: usize) {
-        // Returns a mutable reference to the num_resources field of a station
+        // Returns a mutable reference to the `stock` field of a station
         // Panics if given planet doesn't have a station
-        fn num_resources(pl: &mut Planet) -> &mut usize {
-            if let Some(PlanetFeature::Station { ref mut num_resources } ) = pl.feat {
-                return num_resources;
+        fn stock(pl: &mut Planet) -> &mut usize {
+            if let Some(PlanetFeature::Station { ref mut stock } ) = pl.feat {
+                return stock;
             }
         
             panic!()
-        }
-
-        fn clamp_to_radius(pos: &mut Point2<f32>, rad: f32) {
-            pos.x = pos.x.clamp(-1f32 * rad, rad);
-            pos.y = pos.y.clamp(-1f32 * rad, rad);
         }
         
         // All ship logic occurs in this match expression
@@ -462,14 +441,14 @@ impl Sim {
         let goal = self.ships[ship_index].goal;
         self.ships[ship_index].goal = match (job, goal) {
             (
-                ShipJob::Trader { has_resource }, 
+                ShipJob::Trader { has_ore }, 
                 ShipGoal::Visit { target } 
             ) => {
-                // Deliver resources if the Trader was carrying them
-                if has_resource {
-                    *num_resources(&mut self.system[target]) += 1;
+                // Deliver ore if the Trader was carrying them
+                if has_ore {
+                    *stock(&mut self.system[target]) += 1;
                     self.ships[ship_index].job = ShipJob::Trader { 
-                        has_resource: false 
+                        has_ore: false 
                     };
                 }
 
@@ -483,43 +462,43 @@ impl Sim {
                 }
                 
                 #[allow(clippy::blocks_in_if_conditions)]
-                if { // Determine if the ship should carry resources
-                    let target_res = *num_resources(&mut self.system[target]);
-                    let dest_res = *num_resources(&mut self.system[dest]);
+                if { // Determine if the ship should carry ore
+                    let target_res = *stock(&mut self.system[target]);
+                    let dest_res = *stock(&mut self.system[dest]);
 
-                    // Should carry resources if destination has less
+                    // Should carry ore if destination has less
                     // AND if it didn't carry any to this station
-                    target_res > dest_res && !has_resource 
+                    target_res > dest_res && !has_ore
                 } {
-                    // Take resource from station and give to ship
-                    *num_resources(&mut self.system[target]) -= 1;
+                    // Take ore from station and give to ship
+                    *stock(&mut self.system[target]) -= 1;
                     self.ships[ship_index].job = ShipJob::Trader { 
-                        has_resource: true 
+                        has_ore: true 
                     };
                 }                     
                 
                 ShipGoal::Visit { target: dest }
             },
 
-            ( // After arriving at station or resources
+            ( // After arriving at station or mining site
                 ShipJob::Miner, 
                 ShipGoal::Visit { target } 
             ) => {
                 // Behavior depends on the type of planet is just visited
                 match self.system[target].feat.as_ref().unwrap() {
                     PlanetFeature::Station { .. } => {
-                        // Deposit mined resources at the station
-                        *num_resources(&mut self.system[target]) += 1;
+                        // Deposit ore at the station
+                        *stock(&mut self.system[target]) += 1;
 
-                        // Visit a new planet with resources
-                        let resources = nearest_with_feature(
+                        // Visit another planet with ore
+                        let ores = nearest_with_feature(
                             &self.system, 
-                            Some(PlanetFeature::Resources), 
+                            Some(PlanetFeature::Ore), 
                             self.ships[ship_index].pos);
-                        ShipGoal::Visit { target: resources[0] }
+                        ShipGoal::Visit { target: ores[0] }
                     },
-                    PlanetFeature::Resources => {
-                        // Pause to mine resources
+                    PlanetFeature::Ore => {
+                        // Pause to mine
                         ShipGoal::Wait { target, progress: 0 }
                     }
                 }
@@ -532,25 +511,39 @@ impl Sim {
                 // After mining, the ship needs to deposit
                 let stations = nearest_with_feature(
                     &self.system, 
-                    Some(PlanetFeature::Station { num_resources: 0 } ), 
+                    Some(PlanetFeature::Station { stock: 0 } ), 
                     self.ships[ship_index].pos);
                 ShipGoal::Visit { target: stations[0] }
             },
             
             (
                 ShipJob::Pirate,
-                ShipGoal::Search { .. }
-            ) => {
-                ShipGoal::Scan { prey: None }
-            },
+                ShipGoal::Wander { .. }
+            ) => ShipGoal::Scan,
 
             (
                 ShipJob::Pirate,
-                ShipGoal::Scan { prey }
+                ShipGoal::Scan
             ) => {
+                let mut prey_indices = Vec::new();
+
+                let ship_count = self.ships.len();
+                for target_index in 0..ship_count {
+                    let target_job = self.ships[target_index].job;
+                    if let ShipJob::Trader { has_ore: true } = target_job {
+                        let ship_pos = self.ships[ship_index].pos;
+                        let target_ship_pos = self.ships[target_index].pos;
+                        let dist = ship_pos.distance(target_ship_pos);
+                        if dist < self.config.ship_scan_range {
+                            prey_indices.push(target_index);
+                        }
+                    }
+                }
+
+                let prey = prey_indices.iter().choose(&mut self.prng);
                 match prey {
-                    Some(prey_index) => ShipGoal::Hunt { prey: prey_index },
-                    None => ShipGoal::Search
+                    Some(prey_index) => ShipGoal::Hunt { prey: *prey_index },
+                    None => ShipGoal::Wander
                 }
             },
 
@@ -558,11 +551,12 @@ impl Sim {
                 ShipJob::Pirate,
                 ShipGoal::Hunt { prey }
             ) => {
-                if let ShipJob::Trader { ref mut has_resource } = self.ships[prey].job {
-                    *has_resource = false;
+                let prey_job = &mut self.ships[prey].job;
+                if let ShipJob::Trader { ref mut has_ore } = prey_job {
+                    *has_ore = false;
                 }
 
-                ShipGoal::Search
+                ShipGoal::Wander
             },
             _ => self.ships[ship_index].goal
         };
@@ -578,11 +572,11 @@ fn rand_pos(prng: &mut StdRng, rad: f32) -> Point2<f32> {
 }
 
 fn station_indices(system: &[Planet]) -> Vec<usize> {
-    filter_system(system, Some(PlanetFeature::Station { num_resources: 0 }))
+    filter_system(system, Some(PlanetFeature::Station { stock: 0 }))
 }
 
-fn resource_indices(system: &[Planet]) -> Vec<usize> {
-    filter_system(system, Some(PlanetFeature::Resources))
+fn ore_indices(system: &[Planet]) -> Vec<usize> {
+    filter_system(system, Some(PlanetFeature::Ore))
 }
 
 fn filter_system(system: &[Planet], filter: Option<PlanetFeature>) -> Vec<usize> {

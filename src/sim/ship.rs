@@ -1,5 +1,3 @@
-use cgmath::Point2;
-
 use strum::EnumIter;
 
 pub struct Ship {
@@ -26,7 +24,7 @@ impl Ship {
 
 #[derive(Copy, Clone, EnumIter)]
 pub enum ShipJob {
-    Trader { has_resource: bool },
+    Trader { has_ore: bool },
     Miner,
     Pirate
 }
@@ -35,7 +33,7 @@ pub enum ShipJob {
 pub enum ShipGoal {
     Visit { target: usize },
     Wait { target: usize, progress: usize },
-    Search,
-    Scan { prey: Option<usize> },
-    Hunt { prey: usize }
+    Wander,
+    Hunt { prey: usize },
+    Scan,
 }
