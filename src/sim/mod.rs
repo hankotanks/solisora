@@ -45,12 +45,13 @@ pub struct SimConfig {
     pl_feat_prob: f64,
     pl_size_multiplier: Range<f32>,
     miner_count: usize,
-    pirate_count: usize,
     ship_mine_progress: usize,
     ship_speed: f32,
     ship_acceleration: f32,
     ship_cost: usize,
-    ship_scan_range: f32
+    ship_scan_range: f32,
+    pirate_count: usize,
+    pirate_speed: f32
 
 }
 
@@ -64,12 +65,13 @@ impl Default for SimConfig {
             pl_feat_prob: 0.5,
             pl_size_multiplier: 0.1..0.5,
             miner_count: 8,
-            pirate_count: 8,
             ship_mine_progress: 100,
             ship_speed: 0.01,
             ship_acceleration: 1.05,
             ship_cost: 4,
             ship_scan_range: 0.5,
+            pirate_count: 6,
+            pirate_speed: 0.02
         }
     }
 }
@@ -222,7 +224,7 @@ impl Sim {
         // Generate a few pirate ships to steal from traders
         for _ in 0..config.pirate_count {
             let mut pirate = Ship::new(
-                ShipJob::Pirate, config.ship_speed);
+                ShipJob::Pirate, config.pirate_speed);
             pirate.pos = rand_pos(&mut prng, system_rad);
             pirate.goal = ShipGoal::Wander; // pirates start by wandering
 
@@ -401,20 +403,25 @@ impl Sim {
             },
 
             ShipGoal::Hunt { prey } => {
-                // Pirate stall traders when pursuing them
+                // Check if the trader has escaped
+                if let ShipJob::Trader { has_ore } = self.ships[prey].job {
+                    if !has_ore {
+                        self.ships[ship_index].goal = ShipGoal::Wander;
+                    }
+                }
+
+                // Pirates stall traders when pursuing them
                 self.ships[prey].speed = self.ships[prey].initial_speed;
 
                 // Move towards the prey ship
                 let prey_pos = self.ships[prey].pos;
-                let mut ship = &mut self.ships[ship_index];
+                let ship = &mut self.ships[ship_index];
                 update_ship_pos(ship, prey_pos);
-                ship.speed *= self.config.ship_acceleration;
 
                 // Pirate steals cargo when within 1/10 solar rad of trader
                 let dest_rad = self.system[0].rad * 0.1;
                 if arrived(ship.pos, prey_pos, dest_rad) {
                     ship_objective_complete = true;
-                    ship.speed = ship.initial_speed;
                 }
             }
         }
