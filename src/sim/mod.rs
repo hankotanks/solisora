@@ -44,14 +44,13 @@ pub struct SimConfig {
     pl_moon_prob: f64,
     pl_feat_prob: f64,
     pl_size_multiplier: Range<f32>,
-    miner_count: usize,
-    miner_work_speed: usize,
     ship_speed: f32,
     ship_acceleration: f32,
     ship_cost: usize,
-    ship_scan_range: f32,
     pirate_count: usize,
-    pirate_speed: f32
+    pirate_speed: f32,
+    miner_count: usize,
+    miner_work_speed: usize,
 
 }
 
@@ -60,18 +59,17 @@ impl Default for SimConfig {
         Self {
             system_rad: 2.0,
             system_seed: None,
-            sun_rad: 0.05,
+            sun_rad: 0.1,
             pl_moon_prob: 0.5,
             pl_feat_prob: 0.5,
             pl_size_multiplier: 0.1..0.5,
-            miner_count: 8,
-            miner_work_speed: 100,
             ship_speed: 0.005,
             ship_acceleration: 1.05,
             ship_cost: 4,
-            ship_scan_range: 0.2,
             pirate_count: 8,
-            pirate_speed: 0.01
+            pirate_speed: 0.01,
+            miner_count: 8,
+            miner_work_speed: 100
         }
     }
 }
@@ -391,7 +389,7 @@ impl Sim {
                 ship.pos.y -= (ship.angle + 1.566).sin() * ship.speed;
 
                 if ship.pos.distance((0f32, 0f32).into()) > self.system_rad {
-                    ship.angle += 0.0174f32 * 180f32;
+                    ship.angle += 3.132f32;
                 }
                 
                 ship_objective_complete = true;
@@ -424,7 +422,7 @@ impl Sim {
                 }
 
                 // Pirate steals cargo when within 1/10 solar rad of trader
-                let dest_rad = self.system[0].rad * 0.2;
+                let dest_rad = self.system[0].rad * 0.2; /* TODO */
                 if arrived(ship.pos, prey_pos, dest_rad) {
                     ship_objective_complete = true;
                 }
@@ -546,7 +544,7 @@ impl Sim {
                         let ship_pos = self.ships[ship_index].pos;
                         let target_ship_pos = self.ships[target_index].pos;
                         let dist = ship_pos.distance(target_ship_pos);
-                        if dist < self.config.ship_scan_range {
+                        if dist < self.system[0].rad * 2f32 {
                             prey_indices.push(target_index);
                         }
                     }
