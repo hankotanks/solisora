@@ -220,13 +220,16 @@ impl Sim {
         }
 
         // TODO
-        ships.push( {
-            let mut pirate = Ship::new(ShipJob::Pirate, config.ship_speed);
-            pirate.pos = rand_pos(&mut prng, system_rad);
-            pirate.goal = ShipGoal::Search { dest: pirate.pos };
-
-            pirate
-        } );
+        for _ in 0..5 {
+            ships.push( {
+                let mut pirate = Ship::new(ShipJob::Pirate, config.ship_speed);
+                pirate.pos = rand_pos(&mut prng, system_rad);
+                pirate.goal = ShipGoal::Search;
+    
+                pirate
+            } );
+        }
+        
 
         Self {
             prng,
@@ -343,7 +346,7 @@ impl Sim {
             ship.pos.y += dy * ship.speed;
             ship.angle = Rad::atan2(dx, dy).0 + PI;
         }
-    
+        
         let mut ship_objective_complete = false;
         let mut ship_goal = self.ships[ship_index].goal;
         match ship_goal {
@@ -377,17 +380,18 @@ impl Sim {
                 }
             },
 
-            ShipGoal::Search { dest } => {
+            ShipGoal::Search => {
                 // Move towards a random point
-                update_ship_pos(&mut self.ships[ship_index], dest);
-                
-                // Begin scanning for traders if the point is reached
-                // Point is reached if within one sun radii
-                let ship_pos = self.ships[ship_index].pos;
-                let dest_rad = self.system[0].rad;
-                if arrived(ship_pos, dest, dest_rad) {
-                    ship_objective_complete = true;
+                let mut ship = &mut self.ships[ship_index];
+                ship.angle += 0.0174f32 * if self.prng.gen_bool(0.5) { 4f32 } else { -4f32 };
+                ship.pos.x += (ship.angle + 90f32 * 0.0174f32).cos() * ship.speed;
+                ship.pos.y -= (ship.angle + 90f32 * 0.0174f32).sin() * ship.speed;
+
+                if ship.pos.distance((0f32, 0f32).into()) > self.system_rad {
+                    ship.angle += 0.0174f32 * 180f32;
                 }
+                
+                ship_objective_complete = true;
             },
             
             ShipGoal::Scan { ref mut prey } => {
@@ -546,15 +550,7 @@ impl Sim {
             ) => {
                 match prey {
                     Some(prey_index) => ShipGoal::Hunt { prey: prey_index },
-                    None => {
-                        // TODO
-                        let mut dest_pos = rand_pos(&mut self.prng, self.system_rad * 0.5);
-                        dest_pos.x += self.ships[ship_index].pos.x;
-                        dest_pos.y += self.ships[ship_index].pos.y;
-                        clamp_to_radius(&mut dest_pos, self.system_rad);
-
-                        ShipGoal::Search { dest: dest_pos }
-                    }
+                    None => ShipGoal::Search
                 }
             },
 
@@ -566,13 +562,7 @@ impl Sim {
                     *has_resource = false;
                 }
 
-                // TODO
-                let mut dest_pos = rand_pos(&mut self.prng, self.system_rad * 0.5);
-                dest_pos.x += self.ships[ship_index].pos.x;
-                dest_pos.y += self.ships[ship_index].pos.y;
-                clamp_to_radius(&mut dest_pos, self.system_rad);
-
-                ShipGoal::Search { dest: dest_pos }
+                ShipGoal::Search
             },
             _ => self.ships[ship_index].goal
         };

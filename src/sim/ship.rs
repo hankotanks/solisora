@@ -35,7 +35,7 @@ pub enum ShipJob {
 pub enum ShipGoal {
     Visit { target: usize },
     Wait { target: usize, progress: usize },
-    Search { dest: Point2<f32> },
+    Search,
     Scan { prey: Option<usize> },
     Hunt { prey: usize }
 }
