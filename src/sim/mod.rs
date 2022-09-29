@@ -48,7 +48,10 @@ pub struct SimConfig {
     ship_mine_progress: usize,
     ship_speed: f32,
     ship_acceleration: f32,
-    ship_resource_cost: usize
+    ship_resource_cost: usize,
+    ship_scan_range: f32,
+    ship_theft_range: f32
+
 }
 
 impl Default for SimConfig {
@@ -64,7 +67,9 @@ impl Default for SimConfig {
             ship_mine_progress: 100,
             ship_speed: 0.01,
             ship_acceleration: 1.05,
-            ship_resource_cost: 4
+            ship_resource_cost: 4,
+            ship_scan_range: 0.2,
+            ship_theft_range: 0.02
         }
     }
 }
@@ -196,33 +201,34 @@ impl Sim {
         let mut ships = Vec::new();
         for _ in 0..config.ship_count {
             let mut ship = Ship::new(ShipJob::Miner, config.ship_speed);
-                // Use polar coordinates to ensure even distribution
-                let r = system_rad * prng.gen::<f32>().sqrt();
-                let theta = prng.gen::<f32>() * TAU;
-                ship.pos = Point2::new(r * theta.cos(), r * theta.sin());
+            // Use polar coordinates to ensure even distribution
+            ship.pos = rand_pos(&mut prng, system_rad);
 
-                // Add ship after updating position
-                ships.push(ship);
+            // Add ship after updating position
+            ships.push(ship);
         }
 
         {
-            // Used to choose a destination for new ships
-            let stations = station_indices(&system);
-            let resources = resource_indices(&system);
-
             // Ships start at random points, with random destinations
             // Initial goals are specific to each ship's job
+            let resources = resource_indices(&system);
             for ship in ships.iter_mut() {
-                ship.goal = match ship.job {
-                    ShipJob::Miner => ShipGoal::Visit { 
-                        target: *resources.iter().choose(&mut prng).unwrap() 
-                    },
-                    ShipJob::Trader { .. } => ShipGoal::Visit { 
-                        target: *stations.iter().choose(&mut prng).unwrap() 
-                    } 
+                ship.goal = ShipGoal::Visit { 
+                    target: *resources.iter().choose(&mut prng).unwrap()
                 };
             }
         }
+
+        // TODO
+        ships.push( {
+            let mut pirate = Ship::new(ShipJob::Pirate, config.ship_speed);
+            pirate.pos = rand_pos(&mut prng, system_rad);
+            pirate.goal = ShipGoal::Search {
+                dest: {rand_pos(&mut prng, system_rad)}
+            };
+
+            pirate
+        } );
 
         Self {
             prng,
@@ -325,47 +331,108 @@ impl Sim {
     /// Updates ship position and checks the status of its goal
     /// If the ship has achieved its goal, Self::update_ship_goal is called
     pub fn update_ship(&mut self, ship_index: usize) {     
-        let mut ship = &mut self.ships[ship_index];
+        fn arrived(ship_pos: Point2<f32>, pl_pos: Point2<f32>, pl_rad: f32) -> bool {
+            ship_pos.distance2(pl_pos) <= pl_rad.powf(2f32)
+        }
 
+        fn update_ship_pos(ship: &mut Ship, dest_pos: Point2<f32>) {
+            // Position offsets
+            let dx = dest_pos.x - ship.pos.x;
+            let dy = dest_pos.y - ship.pos.y;
+
+            // Update position, angle and increase speed
+            ship.pos.x += dx * ship.speed;
+            ship.pos.y += dy * ship.speed;
+            ship.angle = Rad::atan2(dx, dy).0 + PI;
+        }
+    
         let mut ship_objective_complete = false;
-        match ship.goal {
+        let mut ship_goal = self.ships[ship_index].goal;
+        match ship_goal {
             ShipGoal::Visit { target: pl_index } => {
                 // Update ship objective IFF it has reached its destination
                 let pl_pos = self.system[pl_index].pos;
-                let pl_dist = ship.pos.distance2(pl_pos);
-                let pl_bounds = self.system[pl_index].rad.powf(2f32);
-                if pl_dist <= pl_bounds {
+                let pl_rad = self.system[pl_index].rad;
+
+                let mut ship = &mut self.ships[ship_index];
+                if arrived(ship.pos, pl_pos, pl_rad) {
                     ship.speed = ship.initial_speed; // reset speed
                     ship_objective_complete = true;
                 }
 
-                // Position offsets
-                let dx = pl_pos.x - ship.pos.x;
-                let dy = pl_pos.y - ship.pos.y;
-
-                // Update position, angle and increase speed
-                ship.pos.x += dx * ship.speed;
-                ship.pos.y += dy * ship.speed;
-                ship.angle = Rad::atan2(dx, dy).0 + PI;
+                update_ship_pos(&mut ship, pl_pos);
                 ship.speed *= self.config.ship_acceleration;
             },
 
             ShipGoal::Wait { target: pl_index, progress } => {
                 // Ships dock on planets while waiting
-                ship.pos = self.system[pl_index].pos;
+                self.ships[ship_index].pos = self.system[pl_index].pos;
 
                 // Update ship objective if the ship is done mining
                 if progress < self.config.ship_mine_progress {
-                    ship.goal = ShipGoal::Wait { 
+                    ship_goal /* TODO */ = ShipGoal::Wait { 
                         target: pl_index, 
                         progress: progress + 1 
-                    }
+                    };
                 } else {
                     ship_objective_complete = true;
+                }
+            },
+
+            ShipGoal::Search { dest } => {
+                // Move towards a random point
+                update_ship_pos(&mut self.ships[ship_index], dest);
+                
+                // Begin scanning for traders if the point is reached
+                // Point is reached if within one sun radii
+                let ship_pos = self.ships[ship_index].pos;
+                let dest_rad = self.system[0].rad;
+                if arrived(ship_pos, dest, dest_rad) {
+                    ship_objective_complete = true;
+                }
+            },
+            
+            ShipGoal::Scan { ref mut prey } => {
+                let mut prey_indices = Vec::new();
+
+                let ship_count = self.ships.len();
+                for target_ship_index in 0..ship_count {
+                    let target_ship_job = self.ships[target_ship_index].job;
+                    if let ShipJob::Trader { has_resource: true } = target_ship_job {
+                        let ship_pos = self.ships[ship_index].pos;
+                        let target_ship_pos = self.ships[target_ship_index].pos;
+                        let dist = ship_pos.distance(target_ship_pos);
+                        if dist < self.config.ship_scan_range {
+                            prey_indices.push(target_ship_index);
+                        }
+                    }
+                }
+
+                if let Some(prey_index) = prey_indices.iter().choose(&mut self.prng) {
+                    *prey = Some(*prey_index);
+                } 
+
+                // Update no matter what after the scan cycle
+                ship_objective_complete = true;
+            },
+
+            ShipGoal::Hunt { prey } => {
+                self.ships[prey].speed = self.ships[prey].initial_speed;
+
+                let prey_pos = self.ships[prey].pos;
+                let mut ship = &mut self.ships[ship_index];
+                update_ship_pos(ship, prey_pos);
+                ship.speed *= self.config.ship_acceleration;
+
+                let dest_rad = self.config.ship_theft_range;
+                if arrived(ship.pos, prey_pos, dest_rad) {
+                    ship_objective_complete = true;
+                    ship.speed = ship.initial_speed;
                 }
             }
         }
 
+        self.ships[ship_index].goal = ship_goal; // TODO
         if ship_objective_complete {
             self.update_ship_goal(ship_index)
         }
@@ -463,10 +530,56 @@ impl Sim {
                 ShipGoal::Visit { target: stations[0] }
             },
             
+            (
+                ShipJob::Pirate,
+                ShipGoal::Search { .. }
+            ) => {
+                ShipGoal::Scan { prey: None }
+            },
+
+            (
+                ShipJob::Pirate,
+                ShipGoal::Scan { prey }
+            ) => {
+                match prey {
+                    Some(prey_index) => ShipGoal::Hunt { prey: prey_index },
+                    None => {
+                        // TODO
+                        let mut dest_pos = rand_pos(&mut self.prng, self.config.ship_scan_range);
+                        dest_pos.x += self.ships[ship_index].pos.x;
+                        dest_pos.y += self.ships[ship_index].pos.y;
+
+                        ShipGoal::Search { dest: dest_pos }
+                    }
+                }
+            },
+
+            (
+                ShipJob::Pirate,
+                ShipGoal::Hunt { prey }
+            ) => {
+                if let ShipJob::Trader { ref mut has_resource } = self.ships[prey].job {
+                    *has_resource = false;
+                }
+
+                // TODO
+                let mut dest_pos = rand_pos(&mut self.prng, self.config.ship_scan_range);
+                dest_pos.x += self.ships[ship_index].pos.x;
+                dest_pos.y += self.ships[ship_index].pos.y;
+
+                ShipGoal::Search { dest: dest_pos }
+            },
             _ => self.ships[ship_index].goal
         };
     
     }
+}
+
+fn rand_pos(prng: &mut StdRng, rad: f32) -> Point2<f32> {
+    let r = rad * prng.gen::<f32>().sqrt();
+    let theta = prng.gen::<f32>() * TAU;
+    
+    Point2::new(r * theta.cos(), r * theta.sin())
 }
 
 fn station_indices(system: &[Planet]) -> Vec<usize> {

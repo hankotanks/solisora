@@ -112,7 +112,8 @@ impl Mesh {
                 let color = match ship.job {
                     ShipJob::Miner => [1f32, 0.4f32, 1f32],
                     ShipJob::Trader { has_resource: false } => [0f32, 0.6f32, 1f32],
-                    ShipJob::Trader { has_resource: true } => [0f32, 1f32, 0.6f32]
+                    ShipJob::Trader { has_resource: true } => [0f32, 1f32, 0.6f32],
+                    ShipJob::Pirate => [1f32, 0f32, 0f32]
                 };
         
                 let min = ship.angle - 0.2617994;
