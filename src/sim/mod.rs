@@ -335,7 +335,7 @@ impl Sim {
     /// If the ship has achieved its goal, Self::update_ship_goal is called
     pub fn update_ship(&mut self, ship_index: usize) {     
         fn arrived(ship_pos: Point2<f32>, pl_pos: Point2<f32>, pl_rad: f32) -> bool {
-            ship_pos.distance2(pl_pos) <= pl_rad.powf(2f32)
+            ship_pos.distance(pl_pos) <= pl_rad * 2f32
         }
 
         fn update_ship_pos(ship: &mut Ship, dest_pos: Point2<f32>) {
