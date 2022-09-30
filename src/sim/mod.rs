@@ -422,7 +422,7 @@ impl Sim {
                 }
 
                 // Pirate steals cargo when within 1/10 solar rad of trader
-                let dest_rad = self.system[0].rad * 0.2; /* TODO */
+                let dest_rad = self.system[0].rad * 2f32; /* TODO */
                 if arrived(ship.pos, prey_pos, dest_rad) {
                     ship_objective_complete = true;
                 }
