@@ -334,7 +334,9 @@ impl Sim {
 
     pub fn pirate_in_range(&self, pirate_index: usize) -> bool {
         if let ShipGoal::Hunt { prey, .. } = self.ships[pirate_index].goal {
-            let dist = self.ships[pirate_index].pos.distance(self.ships[prey].pos);
+            let pirate_pos = self.ships[pirate_index].pos;
+            let prey_pos = self.ships[prey].pos;
+            let dist = pirate_pos.distance(prey_pos);
             return dist < self.config.raid_range;
         }
 
@@ -423,10 +425,11 @@ impl Sim {
                 update_ship_pos(&mut self.ships[ship_index], prey_pos);
 
                 // Check if the target is still a valid target for a raid
+                let prey_dist = self.ships[ship_index].pos.distance(prey_pos);
                 if let ShipJob::Trader { cargo } = self.ships[prey].job {
                     if !cargo { 
                         ship_objective_complete = true; 
-                    } else if self.ships[ship_index].pos.distance(prey_pos) < self.config.raid_range {
+                    } else if prey_dist < self.config.raid_range {
                         // Prevent target ship from accelerating
                         self.ships[prey].speed = self.ships[prey].initial_speed;
                         self.ships[ship_index].goal = ShipGoal::Hunt {
@@ -569,7 +572,9 @@ impl Sim {
 
                 let prey = prey_indices.iter().choose(&mut self.prng);
                 match prey {
-                    Some(prey_index) => ShipGoal::Hunt { prey: *prey_index, progress: 0 },
+                    Some(prey_index) => { 
+                        ShipGoal::Hunt { prey: *prey_index, progress: 0 } 
+                    },
                     None => ShipGoal::Wander
                 }
             },

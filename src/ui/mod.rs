@@ -27,7 +27,7 @@ pub(crate) async fn run(mut sim: crate::sim::Sim) {
     let mut state = State::new(&window).await;
     event_loop.run(move |event, _, control_flow| {
         match event {
-            event::Event::RedrawRequested(window_id) if window_id == window.id() => {
+            event::Event::RedrawRequested(w_id) if w_id == window.id() => {
                 sim.update();
 
                 let mesh = build_mesh(&sim);
@@ -36,7 +36,9 @@ pub(crate) async fn run(mut sim: crate::sim::Sim) {
                 match state.render() {
                     Ok(..) => {  },
                     Err(wgpu::SurfaceError::Lost) => state.redraw(),
-                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    Err(wgpu::SurfaceError::OutOfMemory) => {
+                        *control_flow = ControlFlow::Exit 
+                    },
                     Err(e) => eprintln!("{:?}", e)
                 }
             },
@@ -53,7 +55,9 @@ pub(crate) async fn run(mut sim: crate::sim::Sim) {
                         input:
                         event::KeyboardInput {
                                 state: event::ElementState::Pressed,
-                                virtual_keycode: Some(event::VirtualKeyCode::Escape),
+                                virtual_keycode: Some(
+                                    event::VirtualKeyCode::Escape
+                                ),
                                 ..
                             },
                         ..
@@ -61,7 +65,7 @@ pub(crate) async fn run(mut sim: crate::sim::Sim) {
                     WindowEvent::Resized(physical_size) => {
                         state.resize(*physical_size)
                     },
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => { 
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         state.resize(**new_inner_size) 
                     },
                     _ => {}
@@ -215,36 +219,42 @@ impl State {
             &wgpu::util::BufferInitDescriptor {
                 label: None,
                 contents: bytemuck::cast_slice(&[camera_uniform]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                usage: { 
+                    wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
+                },
             }
         );
 
-        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }
-            ],
-            label: None
-        });
+        let camera_bind_group_layout = { 
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }
+                ],
+                label: None
+            }
+        ) };
         
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }
-            ],
-            label: None
-        });
+        let camera_bind_group = { 
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &camera_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: camera_buffer.as_entire_binding(),
+                    }
+                ],
+                label: None
+            }
+        ) };
 
         let shader = device.create_shader_module(
             wgpu::include_wgsl!("shader.wgsl")
@@ -276,13 +286,11 @@ impl State {
                         module: &shader,
                         entry_point: "fs_main",
                         targets: &[
-                            Some(
-                                wgpu::ColorTargetState {
-                                    format: config.format,
-                                    blend: Some(wgpu::BlendState::REPLACE),
-                                    write_mask: wgpu::ColorWrites::ALL
-                                }
-                            )
+                            Some(wgpu::ColorTargetState {
+                                format: config.format,
+                                blend: Some(wgpu::BlendState::REPLACE),
+                                write_mask: wgpu::ColorWrites::ALL
+                            } )
                         ],
                     }
                 ),
@@ -290,7 +298,7 @@ impl State {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     strip_index_format: None,
                     front_face: wgpu::FrontFace::Cw,
-                    cull_mode: None, //Some(wgpu::Face::Back),
+                    cull_mode: None, //Some(wgpu::Face::Back)
                     polygon_mode: wgpu::PolygonMode::Fill,
                     unclipped_depth: false,
                     conservative: false
@@ -362,7 +370,9 @@ impl State {
 
         self.camera_uniform.update_projection(&self.camera);
         self.queue.write_buffer(
-            &self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform])
+            &self.camera_buffer, 
+            0, 
+            bytemuck::cast_slice(&[self.camera_uniform])
         );
     }
 
@@ -388,7 +398,9 @@ impl State {
                                 view: &view,
                                 resolve_target: None,
                                 ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                                    load: wgpu::LoadOp::Clear(
+                                        wgpu::Color::BLACK
+                                    ),
                                     store: true
                                 },
                             }
