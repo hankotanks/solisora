@@ -256,7 +256,7 @@ impl Sim {
                 if *stock > self.config.ship_cost {
                     *stock -= self.config.ship_cost;
                     let mut ship = Ship::new(
-                        ShipJob::Trader { has_ore: false }, 
+                        ShipJob::Trader { cargo: false }, 
                         self.config.ship_speed);
                     ship.pos = self.system[pl_index].pos;
                     ship.goal = ShipGoal::Visit { target: pl_index };
@@ -454,14 +454,14 @@ impl Sim {
         let goal = self.ships[ship_index].goal;
         self.ships[ship_index].goal = match (job, goal) {
             (
-                ShipJob::Trader { has_ore }, 
+                ShipJob::Trader { cargo }, 
                 ShipGoal::Visit { target } 
             ) => {
                 // Deliver ore if the Trader was carrying them
-                if has_ore {
+                if cargo {
                     *stock(&mut self.system[target]) += 1;
                     self.ships[ship_index].job = ShipJob::Trader { 
-                        has_ore: false 
+                        cargo: false 
                     };
                 }
 
@@ -481,12 +481,12 @@ impl Sim {
 
                     // Should carry ore if destination has less
                     // AND if it didn't carry any to this station
-                    target_res > dest_res && !has_ore
+                    target_res > dest_res && !cargo
                 } {
                     // Take ore from station and give to ship
                     *stock(&mut self.system[target]) -= 1;
                     self.ships[ship_index].job = ShipJob::Trader { 
-                        has_ore: true 
+                        cargo: true 
                     };
                 }                     
                 
@@ -543,7 +543,7 @@ impl Sim {
                 let ship_count = self.ships.len();
                 for target_index in 0..ship_count {
                     let target_job = self.ships[target_index].job;
-                    if let ShipJob::Trader { has_ore: true } = target_job {
+                    if let ShipJob::Trader { cargo: true } = target_job {
                         let ship_pos = self.ships[ship_index].pos;
                         let target_ship_pos = self.ships[target_index].pos;
                         let dist = ship_pos.distance(target_ship_pos);
@@ -565,8 +565,8 @@ impl Sim {
                 ShipGoal::Hunt { prey, .. }
             ) => {
                 let prey_job = &mut self.ships[prey].job;
-                if let ShipJob::Trader { ref mut has_ore } = prey_job {
-                    *has_ore = false;
+                if let ShipJob::Trader { ref mut cargo } = prey_job {
+                    *cargo = false;
                 }
 
                 ShipGoal::Wander

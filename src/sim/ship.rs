@@ -24,7 +24,7 @@ impl Ship {
 
 #[derive(Copy, Clone, EnumIter)]
 pub enum ShipJob {
-    Trader { has_ore: bool },
+    Trader { cargo: bool },
     Miner,
     Pirate
 }

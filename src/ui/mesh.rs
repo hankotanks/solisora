@@ -111,8 +111,8 @@ impl Mesh {
             vertices: {
                 let color = match ship.job {
                     ShipJob::Miner => [1f32, 0.4f32, 1f32],
-                    ShipJob::Trader { has_ore: false } => [0f32, 0.6f32, 1f32],
-                    ShipJob::Trader { has_ore: true } => [0f32, 1f32, 0.6f32],
+                    ShipJob::Trader { cargo: false } => [0f32, 0.6f32, 1f32],
+                    ShipJob::Trader { cargo: true } => [0f32, 1f32, 0.6f32],
                     ShipJob::Pirate => [1f32, 0f32, 0f32]
                 };
         
