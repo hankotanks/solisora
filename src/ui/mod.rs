@@ -94,7 +94,7 @@ fn build_mesh(sim: &crate::sim::Sim) -> Mesh {
         );
     }
 
-    for ship in sim.ships.iter() {
+    for (ship_index, ship) in sim.ships.iter().enumerate() {
         combine_meshes(
             &mut m,
             Mesh::from_ship(ship),
@@ -102,7 +102,7 @@ fn build_mesh(sim: &crate::sim::Sim) -> Mesh {
         );
 
         if let crate::sim::ship::ShipGoal::Hunt { prey, .. } = ship.goal {
-            if cgmath::MetricSpace::distance(ship.pos, sim.ships[prey].pos) < sim.config.raid_range {
+            if sim.pirate_in_range(ship_index) {
                 let prey_mesh = Mesh::from_ship(&sim.ships[prey]);
                 let ship_mesh = Mesh::from_ship(ship);
 

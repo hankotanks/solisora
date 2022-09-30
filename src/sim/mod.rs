@@ -51,7 +51,7 @@ pub struct SimConfig {
     miner_work_speed: usize,
     pirate_count: usize,
     pirate_scan_range: f32,
-    pub raid_range: f32,
+    raid_range: f32,
     raid_duration: usize
 }
 
@@ -273,7 +273,7 @@ impl Sim {
 
     /// Updates the planet at given index, then recursively updates its moons
     /// If called on the sun (Self::system[0]), updates the whole system
-    pub fn update_planet_pos(&mut self, pl_index: usize) {
+    fn update_planet_pos(&mut self, pl_index: usize) {
         fn dist_to_sun(pos: Point2<f32>, orbit: Orbit) -> f32 {
             Point2::new(
                 pos.x + orbit.dist * orbit.angle.cos(),
@@ -332,9 +332,19 @@ impl Sim {
         }
     }
 
+    pub fn pirate_in_range(&self, pirate_index: usize) -> bool {
+        if let ShipGoal::Hunt { prey, .. } = self.ships[pirate_index].goal {
+            let dist = self.ships[pirate_index].pos.distance(self.ships[prey].pos);
+            return dist < self.config.raid_range;
+        }
+
+        panic!()
+        
+    }
+
     /// Updates ship position and checks the status of its goal
     /// If the ship has achieved its goal, Self::update_ship_goal is called
-    pub fn update_ship(&mut self, ship_index: usize) {     
+    fn update_ship(&mut self, ship_index: usize) {     
         fn arrived(ship_pos: Point2<f32>, pl_pos: Point2<f32>, pl_rad: f32) -> bool {
             ship_pos.distance(pl_pos) <= pl_rad * 2f32
         }
@@ -577,7 +587,6 @@ impl Sim {
             },
             _ => self.ships[ship_index].goal
         };
-    
     }
 }
 
