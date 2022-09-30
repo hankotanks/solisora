@@ -364,6 +364,7 @@ impl Sim {
                     ship_objective_complete = true;
                 }
 
+                // Update ship position and increase speed
                 update_ship_pos(ship, pl_pos);
                 ship.speed *= self.config.ship_acceleration;
             },
@@ -383,19 +384,22 @@ impl Sim {
             },
 
             ShipGoal::Wander => {
-                let mut angle_offset = 0.0174 * 4f32;
-                if self.prng.gen_bool(0.5) { angle_offset *= -1f32; }
+                // Change heading slightly
+                let mut angle_offset = 0.0696f32;
+                if self.prng.gen_bool(0.5) { angle_offset *= -1.0; }
 
-                // Move towards a random point
+                // Keep moving forward
                 let mut ship = &mut self.ships[ship_index];
                 ship.angle += angle_offset;
                 ship.pos.x += (ship.angle + 1.566).cos() * ship.speed;
                 ship.pos.y -= (ship.angle + 1.566).sin() * ship.speed;
 
+                // Reverse direction upon reaching solar system edge
                 if ship.pos.distance((0f32, 0f32).into()) > self.system_rad {
                     ship.angle += 3.132f32;
                 }
                 
+                // Always update, scan every other tick
                 ship_objective_complete = true;
             },
             
@@ -405,32 +409,25 @@ impl Sim {
             },
 
             ShipGoal::Hunt { prey, progress } => {
-                // Check if the trader has escaped
-                if let ShipJob::Trader { has_ore } = self.ships[prey].job {
-                    if !has_ore {
-                        self.ships[ship_index].goal = ShipGoal::Wander;
-                    }
-                }
-                
                 // Move towards the prey ship
                 let prey_pos = self.ships[prey].pos;
-                // Pirates prevent ships from accelerating away
+                update_ship_pos(&mut self.ships[ship_index], prey_pos);
+
                 if self.ships[ship_index].pos.distance(prey_pos) < self.config.raid_range {
+                    // Prevent target ship from accelerating
                     self.ships[prey].speed = self.ships[prey].initial_speed;
-                }
-
-                let ship = &mut self.ships[ship_index];
-                update_ship_pos(ship, prey_pos);
-
-                if ship.pos.distance(prey_pos) < self.config.raid_range {
-                    ship.goal = ShipGoal::Hunt {
+                    self.ships[ship_index].goal = ShipGoal::Hunt {
                         prey,
                         progress: progress + 1
                     };
 
+                    // Raid is complete
                     if progress > self.config.raid_duration {
                         ship_objective_complete = true;
                     }
+                } else {
+                    // Reset goal if the ship escaped
+                    self.ships[ship_index].goal = ShipGoal::Wander;
                 }
             }
         }
