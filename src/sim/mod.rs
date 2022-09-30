@@ -50,9 +50,9 @@ pub struct SimConfig {
     miner_count: usize,
     miner_work_speed: usize,
     pirate_count: usize,
+    pirate_scan_range: f32,
     raid_range: f32,
-    raid_duration: usize,
-    pirate_kill_prob: f64
+    raid_duration: usize
 
 }
 
@@ -71,9 +71,9 @@ impl Default for SimConfig {
             miner_count: 8,
             miner_work_speed: 100,
             pirate_count: 8,
+            pirate_scan_range: 0.4,
             raid_range: 0.2,
-            raid_duration: 100,
-            pirate_kill_prob: 0.5
+            raid_duration: 50
         }
     }
 }
@@ -414,10 +414,14 @@ impl Sim {
                 
                 // Move towards the prey ship
                 let prey_pos = self.ships[prey].pos;
+                // Pirates prevent ships from accelerating away
+                if self.ships[ship_index].pos.distance(prey_pos) < self.config.raid_range {
+                    self.ships[prey].speed = self.ships[prey].initial_speed;
+                }
+
                 let ship = &mut self.ships[ship_index];
                 update_ship_pos(ship, prey_pos);
 
-                // Pirates prevent ships from accelerating away
                 if ship.pos.distance(prey_pos) < self.config.raid_range {
                     ship.goal = ShipGoal::Hunt {
                         prey,
@@ -546,7 +550,7 @@ impl Sim {
                         let ship_pos = self.ships[ship_index].pos;
                         let target_ship_pos = self.ships[target_index].pos;
                         let dist = ship_pos.distance(target_ship_pos);
-                        if dist < self.system[0].rad * 2f32 {
+                        if dist < self.config.pirate_scan_range {
                             prey_indices.push(target_index);
                         }
                     }
