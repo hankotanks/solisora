@@ -47,10 +47,12 @@ pub struct SimConfig {
     ship_speed: f32,
     ship_acceleration: f32,
     ship_cost: usize,
-    pirate_count: usize,
-    pirate_speed: f32,
     miner_count: usize,
     miner_work_speed: usize,
+    pirate_count: usize,
+    raid_range: f32,
+    raid_duration: usize,
+    pirate_kill_prob: f64
 
 }
 
@@ -66,10 +68,12 @@ impl Default for SimConfig {
             ship_speed: 0.005,
             ship_acceleration: 1.05,
             ship_cost: 4,
-            pirate_count: 8,
-            pirate_speed: 0.01,
             miner_count: 8,
-            miner_work_speed: 100
+            miner_work_speed: 100,
+            pirate_count: 8,
+            raid_range: 0.2,
+            raid_duration: 100,
+            pirate_kill_prob: 0.5
         }
     }
 }
@@ -222,7 +226,7 @@ impl Sim {
         // Generate a few pirate ships to steal from traders
         for _ in 0..config.pirate_count {
             let mut pirate = Ship::new(
-                ShipJob::Pirate, config.pirate_speed);
+                ShipJob::Pirate, config.ship_speed);
             pirate.pos = rand_pos(&mut prng, system_rad);
             pirate.goal = ShipGoal::Wander; // pirates start by wandering
 
@@ -400,7 +404,7 @@ impl Sim {
                 ship_objective_complete = true;
             },
 
-            ShipGoal::Hunt { prey } => {
+            ShipGoal::Hunt { prey, progress } => {
                 // Check if the trader has escaped
                 if let ShipJob::Trader { has_ore } = self.ships[prey].job {
                     if !has_ore {
@@ -411,20 +415,18 @@ impl Sim {
                 // Move towards the prey ship
                 let prey_pos = self.ships[prey].pos;
                 let ship = &mut self.ships[ship_index];
+                update_ship_pos(ship, prey_pos);
 
-                { // Close the gap and overtake the trade ship
-                    let dx = prey_pos.x - ship.pos.x;
-                    let dy = prey_pos.y - ship.pos.y;
-                    ship.angle = Rad::atan2(dx, dy).0 + PI;
+                // Pirates prevent ships from accelerating away
+                if ship.pos.distance(prey_pos) < self.config.raid_range {
+                    ship.goal = ShipGoal::Hunt {
+                        prey,
+                        progress: progress + 1
+                    };
 
-                    ship.pos.x += (ship.angle + 1.566).cos() * ship.speed;
-                    ship.pos.y -= (ship.angle + 1.566).sin() * ship.speed;
-                }
-
-                // Pirate steals cargo when within 1/10 solar diameter
-                let dest_rad = self.system[0].rad * 0.2; /* TODO */
-                if arrived(ship.pos, prey_pos, dest_rad) {
-                    ship_objective_complete = true;
+                    if progress > self.config.raid_duration {
+                        ship_objective_complete = true;
+                    }
                 }
             }
         }
@@ -552,17 +554,14 @@ impl Sim {
 
                 let prey = prey_indices.iter().choose(&mut self.prng);
                 match prey {
-                    Some(prey_index) => { 
-                        self.ships[*prey_index].speed = self.ships[*prey_index].initial_speed;
-                        ShipGoal::Hunt { prey: *prey_index } 
-                    },
+                    Some(prey_index) => ShipGoal::Hunt { prey: *prey_index, progress: 0 },
                     None => ShipGoal::Wander
                 }
             },
 
             (
                 ShipJob::Pirate,
-                ShipGoal::Hunt { prey }
+                ShipGoal::Hunt { prey, .. }
             ) => {
                 let prey_job = &mut self.ships[prey].job;
                 if let ShipJob::Trader { ref mut has_ore } = prey_job {

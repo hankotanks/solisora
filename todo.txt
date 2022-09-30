@@ -1,0 +1,5 @@
+TODO
+- Pirates have a chance to destroy ships after raiding them (in SimConfig)
+- When within a certain radius of another ship, pirate ships output a beam between them
+  When they have maintained this link for a period of time, the raid is complete
+  Raid success is no longer determined by contact

@@ -34,6 +34,6 @@ pub enum ShipGoal {
     Visit { target: usize },
     Wait { target: usize, progress: usize },
     Wander,
-    Hunt { prey: usize },
+    Hunt { prey: usize, progress: usize },
     Scan,
 }
