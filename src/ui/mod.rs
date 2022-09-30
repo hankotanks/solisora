@@ -20,10 +20,6 @@ use camera::{
     CameraUniform
 };
 
-
-use cgmath::MetricSpace;
-use crate::sim::{Sim, ship::ShipGoal};
-
 pub(crate) async fn run(mut sim: crate::sim::Sim) {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
@@ -76,7 +72,7 @@ pub(crate) async fn run(mut sim: crate::sim::Sim) {
     });
 }
 
-fn build_mesh(sim: &Sim) -> Mesh {
+fn build_mesh(sim: &crate::sim::Sim) -> Mesh {
     fn combine_meshes(m1: &mut Mesh, mut m2: Mesh, scale: f32) {
         let offset = m1.vertices.len();
         m2.vertices.iter_mut().for_each(|v| { 
@@ -105,8 +101,8 @@ fn build_mesh(sim: &Sim) -> Mesh {
             scale
         );
 
-        if let ShipGoal::Hunt { prey, .. } = ship.goal {
-            if ship.pos.distance(sim.ships[prey].pos) < sim.config.raid_range {
+        if let crate::sim::ship::ShipGoal::Hunt { prey, .. } = ship.goal {
+            if cgmath::MetricSpace::distance(ship.pos, sim.ships[prey].pos) < sim.config.raid_range {
                 let prey_mesh = Mesh::from_ship(&sim.ships[prey]);
                 let ship_mesh = Mesh::from_ship(ship);
 
