@@ -51,7 +51,7 @@ pub struct SimConfig {
     miner_work_speed: usize,
     pirate_count: usize,
     pirate_scan_range: f32,
-    raid_range: f32,
+    pub raid_range: f32,
     raid_duration: usize
 
 }
