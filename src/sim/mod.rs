@@ -53,7 +53,6 @@ pub struct SimConfig {
     pirate_scan_range: f32,
     pub raid_range: f32,
     raid_duration: usize
-
 }
 
 impl Default for SimConfig {
@@ -73,7 +72,7 @@ impl Default for SimConfig {
             pirate_count: 8,
             pirate_scan_range: 0.4,
             raid_range: 0.2,
-            raid_duration: 50
+            raid_duration: 40
         }
     }
 }
@@ -413,22 +412,27 @@ impl Sim {
                 let prey_pos = self.ships[prey].pos;
                 update_ship_pos(&mut self.ships[ship_index], prey_pos);
 
-                if self.ships[ship_index].pos.distance(prey_pos) < self.config.raid_range {
-                    // Prevent target ship from accelerating
-                    self.ships[prey].speed = self.ships[prey].initial_speed;
-                    self.ships[ship_index].goal = ShipGoal::Hunt {
-                        prey,
-                        progress: progress + 1
-                    };
-
-                    // Raid is complete
-                    if progress > self.config.raid_duration {
-                        ship_objective_complete = true;
+                // Check if the target is still a valid target for a raid
+                if let ShipJob::Trader { cargo } = self.ships[prey].job {
+                    if !cargo { 
+                        ship_objective_complete = true; 
+                    } else if self.ships[ship_index].pos.distance(prey_pos) < self.config.raid_range {
+                        // Prevent target ship from accelerating
+                        self.ships[prey].speed = self.ships[prey].initial_speed;
+                        self.ships[ship_index].goal = ShipGoal::Hunt {
+                            prey,
+                            progress: progress + 1
+                        };
+    
+                        // Raid is complete
+                        if progress > self.config.raid_duration {
+                            ship_objective_complete = true;
+                        }
+                    } else {
+                        // Reset goal if the ship escaped
+                        self.ships[ship_index].goal = ShipGoal::Wander;
                     }
-                } else {
-                    // Reset goal if the ship escaped
-                    self.ships[ship_index].goal = ShipGoal::Wander;
-                }
+                } 
             }
         }
 
