@@ -347,8 +347,29 @@ impl Sim {
     /// Updates ship position and checks the status of its goal
     /// If the ship has achieved its goal, Self::update_ship_goal is called
     fn update_ship(&mut self, ship_index: usize) {     
-        fn arrived(ship_pos: Point2<f32>, pl_pos: Point2<f32>, pl_rad: f32) -> bool {
-            ship_pos.distance(pl_pos) <= pl_rad * 2f32
+        fn arrived(ship_pos: Point2<f32>, old_ship_pos: Point2<f32>, pl_pos: Point2<f32>, pl_rad: f32) -> bool {
+            /* ship_pos.distance(pl_pos) <= pl_rad * 2f32 */
+            let old_x = old_ship_pos.x - pl_pos.x;
+            let old_y = old_ship_pos.y - pl_pos.y;
+            let new_x = ship_pos.x - pl_pos.x;
+            let new_y = ship_pos.y - pl_pos.y;
+
+            let a = (new_x - old_x).powf(2f32) + (new_y - old_y).powf(2f32);
+            let b = 2f32 * (old_x * (new_x - old_x) + old_y * (new_y - old_y));
+            let c = old_x.powf(2f32) + old_y.powf(2f32) - pl_rad.powf(2f32);
+            let disc = b.powf(2f32) - 4f32 * a * c;
+            if disc <= 0f32 {
+                return false;
+            }
+
+            let disc = disc.sqrt();
+            let t1 = (b * -1f32 + disc) / (2f32 * a);
+            let t2 = (b * -1f32 - disc) / (2f32 * a);
+            if (0f32 < t1 && t1 < 1f32) || (0f32 < t2 && t2 < 1f32) {
+                return true;
+            }
+
+            false
         }
 
         fn update_ship_pos(ship: &mut Ship, dest_pos: Point2<f32>) {
@@ -369,15 +390,18 @@ impl Sim {
                 let pl_pos = self.system[pl_index].pos;
                 let pl_rad = self.system[pl_index].rad;
 
+                let old_ship_pos = self.ships[ship_index].pos;
+                // Update ship position and increase speed
                 let mut ship = &mut self.ships[ship_index];
-                if arrived(ship.pos, pl_pos, pl_rad) {
+                update_ship_pos(ship, pl_pos);
+                ship.speed *= self.config.ship_acceleration;
+
+                if arrived(ship.pos, old_ship_pos, pl_pos, pl_rad) {
                     ship.speed = ship.initial_speed; // reset speed
                     ship_objective_complete = true;
                 }
 
-                // Update ship position and increase speed
-                update_ship_pos(ship, pl_pos);
-                ship.speed *= self.config.ship_acceleration;
+                
             },
 
             ShipGoal::Wait { target: pl_index, progress } => {
