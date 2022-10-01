@@ -32,8 +32,8 @@ pub enum ShipJob {
 #[derive(Copy, Clone)]
 pub enum ShipGoal {
     Visit { target: usize },
-    Wait { target: usize, progress: usize },
+    Wait { target: usize, progress: isize },
     Wander,
-    Hunt { prey: usize, progress: usize },
+    Hunt { prey: usize, progress: isize },
     Scan,
 }

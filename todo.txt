@@ -1,3 +1,5 @@
 TODO
-- Instead of checking collision by proximity, check if the ships last movement
-  intersected the target, this prevents runaway ships.
+- Each pirate should have its own territory -- a circle projected around their initial start position
+  Start position encoded in ShipJob::pirate
+  When hunting, Pirates can leave their territory, but will return after concluding the hunt
+  This can be encoded in a new ship goal variant -- ShipGoal::Return

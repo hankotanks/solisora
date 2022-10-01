@@ -48,11 +48,13 @@ pub struct SimConfig {
     ship_acceleration: f32,
     ship_cost: usize,
     miner_count: usize,
-    miner_work_speed: usize,
+    harvest_duration: usize,
+    harvest_variance: Range<isize>,
     pirate_count: usize,
     pirate_scan_range: f32,
     raid_range: f32,
-    raid_duration: usize
+    raid_duration: usize,
+    raid_variance: Range<isize>
 }
 
 impl Default for SimConfig {
@@ -68,11 +70,13 @@ impl Default for SimConfig {
             ship_acceleration: 1.05,
             ship_cost: 4,
             miner_count: 16,
-            miner_work_speed: 100,
+            harvest_duration: 100,
+            harvest_variance: -20..20,
             pirate_count: 8,
             pirate_scan_range: 0.4,
             raid_range: 0.2,
-            raid_duration: 40
+            raid_duration: 40,
+            raid_variance: -20..20
         }
     }
 }
@@ -411,7 +415,7 @@ impl Sim {
                 };
 
                 // Update ship objective if the ship is done mining
-                if progress == self.config.miner_work_speed {
+                if progress == self.config.harvest_duration as isize {
                     ship_objective_complete = true;
                 }
             },
@@ -460,7 +464,7 @@ impl Sim {
                         };
     
                         // Raid is complete
-                        if progress > self.config.raid_duration {
+                        if progress > self.config.raid_duration as isize {
                             ship_objective_complete = true;
                         }
                     } else {
@@ -551,7 +555,10 @@ impl Sim {
                     },
                     PlanetFeature::Ore => {
                         // Pause to mine
-                        ShipGoal::Wait { target, progress: 0 }
+                        let progress = self.config.harvest_variance.clone();
+                        let progress = progress.choose(&mut self.prng);
+                        let progress = progress.unwrap();
+                        ShipGoal::Wait { target, progress }
                     }
                 }
             },
@@ -595,7 +602,10 @@ impl Sim {
                 let prey = prey_indices.iter().choose(&mut self.prng);
                 match prey {
                     Some(prey_index) => { 
-                        ShipGoal::Hunt { prey: *prey_index, progress: 0 } 
+                        let progress = self.config.raid_variance.clone();
+                        let progress = progress.choose(&mut self.prng);
+                        let progress = progress.unwrap();
+                        ShipGoal::Hunt { prey: *prey_index, progress } 
                     },
                     None => ShipGoal::Wander
                 }
