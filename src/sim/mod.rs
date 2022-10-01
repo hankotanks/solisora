@@ -62,12 +62,12 @@ impl Default for SimConfig {
             system_seed: None,
             sun_rad: 0.1,
             pl_moon_prob: 0.5,
-            pl_feat_prob: 0.5,
-            pl_size_multiplier: 0.1..0.5,
+            pl_feat_prob: 0.8,
+            pl_size_multiplier: 0.1..0.3,
             ship_speed: 0.005,
             ship_acceleration: 1.05,
             ship_cost: 4,
-            miner_count: 8,
+            miner_count: 16,
             miner_work_speed: 100,
             pirate_count: 8,
             pirate_scan_range: 0.4,
@@ -400,8 +400,6 @@ impl Sim {
                     ship.speed = ship.initial_speed; // reset speed
                     ship_objective_complete = true;
                 }
-
-                
             },
 
             ShipGoal::Wait { target: pl_index, progress } => {
