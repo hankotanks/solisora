@@ -52,6 +52,7 @@ pub struct SimConfig {
     harvest_variance: Range<isize>,
     pirate_count: usize,
     pirate_scan_range: f32,
+    pirate_territory_rad: f32,
     raid_range: f32,
     raid_duration: usize,
     raid_variance: Range<isize>
@@ -74,6 +75,7 @@ impl Default for SimConfig {
             harvest_variance: -20..20,
             pirate_count: 8,
             pirate_scan_range: 0.4,
+            pirate_territory_rad: 0.25,
             raid_range: 0.2,
             raid_duration: 40,
             raid_variance: -20..20
@@ -228,15 +230,17 @@ impl Sim {
 
         // Generate a few pirate ships to steal from traders
         for _ in 0..config.pirate_count {
+            let pirate_pos = rand_pos(
+                &mut prng, system_rad - config.pirate_territory_rad);
             let mut pirate = Ship::new(
-                ShipJob::Pirate, config.ship_speed);
-            pirate.pos = rand_pos(&mut prng, system_rad);
+                ShipJob::Pirate { origin: (pirate_pos.x, pirate_pos.y) }, 
+                config.ship_speed);
+            pirate.pos = pirate_pos;
             pirate.goal = ShipGoal::Wander; // pirates start by wandering
 
             // Add pirate after giving it a random pos
             ships.push(pirate);
         }
-        
 
         Self {
             prng,
@@ -421,23 +425,27 @@ impl Sim {
             },
 
             ShipGoal::Wander => {
-                // Change heading slightly
-                let mut angle_offset = 0.0696f32;
-                if self.prng.gen_bool(0.5) { angle_offset *= -1.0; }
-
-                // Keep moving forward
                 let mut ship = &mut self.ships[ship_index];
-                ship.angle += angle_offset;
-                ship.pos.x += (ship.angle + 1.566).cos() * ship.speed;
-                ship.pos.y -= (ship.angle + 1.566).sin() * ship.speed;
 
-                // Reverse direction upon reaching solar system edge
-                if ship.pos.distance((0f32, 0f32).into()) > self.system_rad {
-                    ship.angle += 3.132f32;
+                // Reverse direction upon reaching edge of territory
+                if let ShipJob::Pirate { origin } = ship.job {
+                    let dist = ship.pos.distance(origin.into());
+                    if dist > self.config.pirate_territory_rad {
+                        update_ship_pos(ship, origin.into());
+                    } else {
+                        // Change heading slightly
+                        let mut angle_offset = 0.0348f32;
+                        if self.prng.gen_bool(0.5) { angle_offset *= -1.0; }
+
+                        // Keep moving forward
+                        ship.angle += angle_offset;
+                        ship.pos.x += (ship.angle + 1.566).cos() * ship.speed;
+                        ship.pos.y -= (ship.angle + 1.566).sin() * ship.speed;
+
+                        // Always update, scan every other tick
+                        ship_objective_complete = true;
+                    }
                 }
-                
-                // Always update, scan every other tick
-                ship_objective_complete = true;
             },
             
             ShipGoal::Scan => {
@@ -473,6 +481,19 @@ impl Sim {
                     }
                 } 
             }
+            ShipGoal::Return => {
+                let ship = &mut self.ships[ship_index];
+                let old_ship_pos = ship.pos;
+                if let ShipJob::Pirate { origin } = ship.job {
+                    update_ship_pos(ship, origin.into());
+
+                    let origin = origin.into();
+                    let territory = self.config.pirate_territory_rad;
+                    if arrived(ship.pos, old_ship_pos, origin, territory) {
+                        ship_objective_complete = true;
+                    }
+                }
+            },
         }
 
         if ship_objective_complete {
@@ -576,12 +597,12 @@ impl Sim {
             },
             
             (
-                ShipJob::Pirate,
+                ShipJob::Pirate { .. },
                 ShipGoal::Wander { .. }
             ) => ShipGoal::Scan,
 
             (
-                ShipJob::Pirate,
+                ShipJob::Pirate { .. },
                 ShipGoal::Scan
             ) => {
                 let mut prey_indices = Vec::new();
@@ -612,7 +633,7 @@ impl Sim {
             },
 
             (
-                ShipJob::Pirate,
+                ShipJob::Pirate { origin },
                 ShipGoal::Hunt { prey, .. }
             ) => {
                 let prey_job = &mut self.ships[prey].job;
@@ -620,8 +641,20 @@ impl Sim {
                     *cargo = false;
                 }
 
+                if self.ships[ship_index].pos.distance(origin.into()) > self.config.pirate_territory_rad {
+                    ShipGoal::Return
+                } else {
+                    ShipGoal::Wander
+                }
+            },
+
+            (
+                ShipJob::Pirate { .. },
+                ShipGoal::Return
+            ) => {
                 ShipGoal::Wander
             },
+
             _ => self.ships[ship_index].goal
         };
     }

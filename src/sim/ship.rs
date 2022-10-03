@@ -26,7 +26,7 @@ impl Ship {
 pub enum ShipJob {
     Trader { cargo: bool },
     Miner,
-    Pirate
+    Pirate { origin: (f32, f32) }
 }
 
 #[derive(Copy, Clone)]
@@ -35,5 +35,6 @@ pub enum ShipGoal {
     Wait { target: usize, progress: isize },
     Wander,
     Hunt { prey: usize, progress: isize },
-    Scan,
+    Return,
+    Scan
 }

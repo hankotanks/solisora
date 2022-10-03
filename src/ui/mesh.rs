@@ -124,7 +124,7 @@ impl Mesh {
                     Miner => [1f32, 0.4f32, 1f32],
                     Trader { cargo: false } => [0f32, 0.6f32, 1f32],
                     Trader { cargo: true } => [0f32, 1f32, 0.6f32],
-                    Pirate => [1f32, 0f32, 0f32]
+                    Pirate { .. } => [1f32, 0f32, 0f32]
                 };
         
                 let top_pos = [ ship.pos.x, ship.pos.y, 0f32 ];
