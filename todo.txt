@@ -1,5 +1,0 @@
-TODO
-- Each pirate should have its own territory -- a circle projected around their initial start position
-  Start position encoded in ShipJob::pirate
-  When hunting, Pirates can leave their territory, but will return after concluding the hunt
-  This can be encoded in a new ship goal variant -- ShipGoal::Return
