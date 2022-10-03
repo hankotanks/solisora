@@ -117,13 +117,15 @@ impl Mesh {
     pub(super) fn from_ship(ship: &crate::sim::ship::Ship) -> Self {
         Self {
             vertices: {
+                use crate::sim::ship::ShipGoal;
                 use crate::sim::ship::ShipJob::*;
 
                 let size = 0.05f32;
                 let color = match ship.job {
-                    Miner => [1f32, 0.4f32, 1f32],
+                    Miner => [1f32, 0.2f32, 0.8f32],
                     Trader { cargo: false } => [0f32, 0.6f32, 1f32],
                     Trader { cargo: true } => [0f32, 1f32, 0.6f32],
+                    Pirate { .. } if matches!(ship.goal, ShipGoal::Wander) || matches!(ship.goal, ShipGoal::Scan) => [1f32, 0.1f32, 0f32],
                     Pirate { .. } => [1f32, 0f32, 0f32]
                 };
         
