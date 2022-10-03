@@ -35,6 +35,5 @@ pub enum ShipGoal {
     Wait { target: usize, progress: isize },
     Wander,
     Hunt { prey: usize, progress: isize },
-    Return,
     Scan
 }

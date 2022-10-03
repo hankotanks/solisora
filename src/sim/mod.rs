@@ -481,19 +481,6 @@ impl Sim {
                     }
                 } 
             }
-            ShipGoal::Return => {
-                let ship = &mut self.ships[ship_index];
-                let old_ship_pos = ship.pos;
-                if let ShipJob::Pirate { origin } = ship.job {
-                    update_ship_pos(ship, origin.into());
-
-                    let origin = origin.into();
-                    let territory = self.config.pirate_territory_rad;
-                    if arrived(ship.pos, old_ship_pos, origin, territory) {
-                        ship_objective_complete = true;
-                    }
-                }
-            },
         }
 
         if ship_objective_complete {
@@ -633,7 +620,7 @@ impl Sim {
             },
 
             (
-                ShipJob::Pirate { origin },
+                ShipJob::Pirate { .. },
                 ShipGoal::Hunt { prey, .. }
             ) => {
                 let prey_job = &mut self.ships[prey].job;
@@ -641,17 +628,6 @@ impl Sim {
                     *cargo = false;
                 }
 
-                if self.ships[ship_index].pos.distance(origin.into()) > self.config.pirate_territory_rad {
-                    ShipGoal::Return
-                } else {
-                    ShipGoal::Wander
-                }
-            },
-
-            (
-                ShipJob::Pirate { .. },
-                ShipGoal::Return
-            ) => {
                 ShipGoal::Wander
             },
 
