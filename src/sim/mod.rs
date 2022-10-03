@@ -465,7 +465,8 @@ impl Sim {
                         ship_objective_complete = true; 
                     } else if prey_dist < self.config.raid_range {
                         // Prevent target ship from accelerating
-                        self.ships[prey].speed = self.ships[prey].initial_speed;
+                        let initial_speed = self.ships[prey].initial_speed;
+                        self.ships[prey].speed = initial_speed;
                         self.ships[ship_index].goal = ShipGoal::Hunt {
                             prey,
                             progress: progress + 1
