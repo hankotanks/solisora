@@ -51,8 +51,7 @@ pub struct SimConfig {
     harvest_duration: usize,
     harvest_variance: Range<isize>,
     pirate_count: usize,
-    pirate_scan_range: f32,
-    pirate_territory_rad: f32,
+    pirate_territory: f32,
     raid_range: f32,
     raid_duration: usize,
     raid_variance: Range<isize>
@@ -74,8 +73,7 @@ impl Default for SimConfig {
             harvest_duration: 100,
             harvest_variance: -20..20,
             pirate_count: 8,
-            pirate_scan_range: 0.4,
-            pirate_territory_rad: 0.25,
+            pirate_territory: 0.4,
             raid_range: 0.2,
             raid_duration: 40,
             raid_variance: -20..20
@@ -230,8 +228,7 @@ impl Sim {
 
         // Generate a few pirate ships to steal from traders
         for _ in 0..config.pirate_count {
-            let pirate_pos = rand_pos(
-                &mut prng, system_rad - config.pirate_territory_rad);
+            let pirate_pos = rand_pos(&mut prng, system_rad * 0.5);
             let mut pirate = Ship::new(
                 ShipJob::Pirate { origin: (pirate_pos.x, pirate_pos.y) }, 
                 config.ship_speed);
@@ -430,7 +427,7 @@ impl Sim {
                 // Reverse direction upon reaching edge of territory
                 if let ShipJob::Pirate { origin } = ship.job {
                     let dist = ship.pos.distance(origin.into());
-                    if dist > self.config.pirate_territory_rad {
+                    if dist > self.config.pirate_territory {
                         update_ship_pos(ship, origin.into());
                     } else {
                         // Change heading slightly
@@ -602,7 +599,7 @@ impl Sim {
                         let ship_pos = self.ships[ship_index].pos;
                         let target_ship_pos = self.ships[target_index].pos;
                         let dist = ship_pos.distance(target_ship_pos);
-                        if dist < self.config.pirate_scan_range {
+                        if dist < self.config.pirate_territory * 0.5 {
                             prey_indices.push(target_index);
                         }
                     }
