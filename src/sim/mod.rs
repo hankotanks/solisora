@@ -54,7 +54,8 @@ pub struct SimConfig {
     pirate_territory: f32,
     raid_range: f32,
     raid_duration: usize,
-    raid_variance: Range<isize>
+    raid_variance: Range<isize>,
+    death_prob: f64
 }
 
 impl Default for SimConfig {
@@ -76,7 +77,8 @@ impl Default for SimConfig {
             pirate_territory: 0.4,
             raid_range: 0.2,
             raid_duration: 40,
-            raid_variance: -20..20
+            raid_variance: -20..20,
+            death_prob: 0.5
         }
     }
 }
@@ -86,6 +88,7 @@ pub struct Sim {
     pub system: Vec<Planet>,
     pub system_rad: f32,
     pub ships: Vec<Ship>,
+    pub killed: Vec<usize>,
     pub config: SimConfig
 }
 
@@ -244,6 +247,7 @@ impl Sim {
             system,
             system_rad,
             ships,
+            killed: Vec::new(),
             config
         }        
     }
@@ -273,6 +277,21 @@ impl Sim {
         // Update every ship
         for ship_index in 0..self.ships.len() {
             self.update_ship(ship_index);
+        }
+
+        // Kill all trading ships that were destroyed in raids this update cycle
+        for index in self.killed.drain(0..) {
+            for ship in self.ships.iter_mut() {
+                if let ShipGoal::Hunt { ref mut prey, .. } = ship.goal {
+                    if *prey == index {
+                        ship.goal = ShipGoal::Wander;
+                    } else if *prey > index {
+                        *prey -= 1;
+                    }
+                }
+            }
+
+            self.ships.remove(index);
         }
     }
 
@@ -387,7 +406,7 @@ impl Sim {
             ship.pos.y += dy * ship.speed;
             ship.angle = Rad::atan2(dx, dy).0 + PI;
         }
-        
+
         let mut ship_objective_complete = false;
         match self.ships[ship_index].goal {
             ShipGoal::Visit { target: pl_index } => {
@@ -471,6 +490,10 @@ impl Sim {
     
                         // Raid is complete
                         if progress > self.config.raid_duration as isize {
+                            if self.prng.gen_bool(self.config.death_prob) && !self.killed.contains(&prey) {
+                                self.killed.push(prey);
+                            }
+
                             ship_objective_complete = true;
                         }
                     } else {
