@@ -78,7 +78,7 @@ impl Default for SimConfig {
             raid_range: 0.2,
             raid_duration: 40,
             raid_variance: -20..20,
-            death_prob: 0.5
+            death_prob: 0.4
         }
     }
 }
@@ -237,6 +237,11 @@ impl Sim {
                 config.ship_speed);
             pirate.pos = pirate_pos;
             pirate.goal = ShipGoal::Wander; // pirates start by wandering
+
+            // Move the pirate to a random spot within its territory
+            let offset = rand_pos(&mut prng, config.pirate_territory);
+            pirate.pos.x += offset.x;
+            pirate.pos.y += offset.y;
 
             // Add pirate after giving it a random pos
             ships.push(pirate);
