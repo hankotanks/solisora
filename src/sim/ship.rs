@@ -1,3 +1,4 @@
+use rand::Rng;
 use strum::EnumIter;
 
 pub struct Ship {
@@ -15,7 +16,7 @@ impl Ship {
             pos: (0f32, 0f32).into(),
             speed,
             initial_speed: speed,
-            angle: 0f32,
+            angle: rand::thread_rng().gen::<f32>() * 6.28,
             goal: ShipGoal::Visit { target: 0 },
             job
         }
