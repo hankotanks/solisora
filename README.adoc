@@ -2,18 +2,6 @@
 
 A solar system simulation in which different types of ships interact. The project's name is a portmanteau of two latin words: _ora_, "edge" and _solis_ "of the sun." I envisioned this project as a sort of screen-saver, with the goal of familiarizing myself with WGPU at a very basic level. Thanks to Benjamin Hansen for this amazing WGPU tutorial: https://sotrh.github.io/learn-wgpu/[].
 
-ifdef::env-github[]
-++++
-<p align="center">
-  <img width="600" height="425" src="images/example.gif">
-</p>
-++++
-endif::[]
-
-ifndef::env-github[]
-image::map.png[A map, 350, align=center]
-endif::[]
-
 == Ship Behavior
 
 [horizontal]
