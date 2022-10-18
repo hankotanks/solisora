@@ -17,7 +17,7 @@ endif::[]
 
 A solar system simulation in which different types of ships interact. The project's name is a portmanteau of two latin words: _ora_, "edge" and _solis_ "of the sun." I envisioned this project as a sort of screen-saver, with the goal of familiarizing myself with WGPU at a very basic level. Thanks to Benjamin Hansen for this amazing WGPU tutorial: https://sotrh.github.io/learn-wgpu/[].
 
-image::images/example.gif[Example, role=half-view-width]
+<p><img src="/images/example.gif" width="50%" height="50%"/></p>
 
 == Planets & Moons
 
