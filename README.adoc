@@ -17,12 +17,7 @@ endif::[]
 
 A solar system simulation in which different types of ships interact. The project's name is a portmanteau of two latin words: _ora_, "edge" and _solis_ "of the sun." I envisioned this project as a sort of screen-saver, with the goal of familiarizing myself with WGPU at a very basic level. Thanks to Benjamin Hansen for this amazing WGPU tutorial: https://sotrh.github.io/learn-wgpu/[].
 
-image::images/example.gif[Example, 500, 350, align="center"]
-
-== Planets & Moons
-
-Planetary systems—planets and the moons that orbit them—are built independently before being added to the sun's orbit. 
-All non-solar bodies can be home to a number of planetary features.
+image::images/example.gif[Example, 400, 300, align="center"]
 
 == Ship Behavior
 
@@ -36,3 +31,8 @@ Pirate :: Each pirate ship patrols its own territory, seeking out traders with c
 Unlike the other two ship types, pirates can't accelerate, and must rely on a jamming weapon that momentarily kills their prey's engines.
 This allows them to close the gap and steal their cargo using short range tractor beams.
 Traders are usually free to go after having their cargo seized, but raids can also be fatal.
+
+== Planets & Moons
+
+Planetary systems—planets and the moons that orbit them—are built independently before being added to the sun's orbit. 
+All non-solar bodies can be home to a number of planetary features.
