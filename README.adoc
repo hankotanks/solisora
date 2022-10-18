@@ -1,23 +1,18 @@
-ifdef::backend-html5[]
-:full-width: role=full-width
-:half-width: role=half-width
-endif::[]
-
-ifdef::backend-pdf[]
-:full-width: pdfwidth=100%
-:half-width: pdfwidth=50%
-endif::[]
-
-ifdef::backend-docbook5[]
-:full-width: scaledwidth=100%
-:half-width: scaledwidth=50%
-endif::[]
-
 = Solisora
 
 A solar system simulation in which different types of ships interact. The project's name is a portmanteau of two latin words: _ora_, "edge" and _solis_ "of the sun." I envisioned this project as a sort of screen-saver, with the goal of familiarizing myself with WGPU at a very basic level. Thanks to Benjamin Hansen for this amazing WGPU tutorial: https://sotrh.github.io/learn-wgpu/[].
 
-image::images/example.gif[Example, 400, 300, align="center"]
+ifdef::env-github[]
+++++
+<p align="center">
+  <img width="500" height="350" src="images/example.gif">
+</p>
+++++
+endif::[]
+
+ifndef::env-github[]
+image::map.png[A map, 350, align=center]
+endif::[]
 
 == Ship Behavior
 
