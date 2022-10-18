@@ -2,12 +2,14 @@
 
 A solar system simulation in which different types of ships interact. The project's name is a portmanteau of two latin words: _ora_, "edge" and _solis_ "of the sun." I envisioned this project as a sort of screen-saver, with the goal of familiarizing myself with WGPU at a very basic level. Thanks to Benjamin Hansen for this amazing WGPU tutorial: https://sotrh.github.io/learn-wgpu/[].
 
+image::images/example.gif[]
+
 == Planets & Moons
 
 Planetary systems—planets and the moons that orbit them—are built independently before being added to the sun's orbit. 
 All non-solar bodies can be home to a number of planetary features.
 
-== Ships & Their Behavior
+== Ship Behavior
 
 [horizontal]
 Mining :: Lands on resource-rich planets to mine ore. 
